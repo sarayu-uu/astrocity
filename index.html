@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Astra Buddies</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <video id="cam" playsinline muted></video>
+
+  <!-- Title: the world is already alive behind it. -->
+  <div id="title" hidden>
+    <div class="title-inner">
+      <small>Astra Buddies</small>
+      <h1>Astra</h1>
+      <p>Five little aliens. One big world. Something has just woken up.</p>
+      <button id="btn-enter">Enter Astra <span aria-hidden="true">→</span></button>
+    </div>
+  </div>
+
+  <!-- The only permanent HUD: where you are, what's going on, map and settings. -->
+  <div id="hud" hidden>
+    <div id="place"><small id="place-sub"></small><span id="place-name"></span></div>
+    <div id="objective" hidden><i></i><span id="objective-text"></span></div>
+    <div id="corner">
+      <button id="btn-map" aria-label="Map">
+        <svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Zm0 0v14m6-12v14"/></svg>
+      </button>
+      <button id="btn-settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="dialogue" hidden>
+    <div id="dlg-name"></div>
+    <p id="dlg-text"></p>
+    <div id="dlg-actions"></div>
+    <div id="dlg-next" aria-hidden="true">▾</div>
+  </div>
+
+  <div id="tooltip" hidden></div>
+
+  <div id="toast" hidden><small></small><strong></strong></div>
+  <div id="chapter" hidden><small></small><strong></strong></div>
+
+  <!-- Move coach: the child's own camera view next to the move to make. -->
+  <div id="coach" hidden>
+    <canvas id="coach-cam" width="320" height="240" hidden></canvas>
+    <div class="coach-row">
+      <div id="coach-figwrap"><div id="coach-ring" hidden></div><div id="coach-fig"></div></div>
+      <div><p id="coach-text"></p><p id="coach-sub"></p></div>
+    </div>
+  </div>
+
+  <div id="setup" hidden>
+    <h2>Poppy needs to see you move</h2>
+    <p>You'll jump, reach and pose to help the buddies. The camera picture stays on this device.</p>
+    <button id="setup-camera" class="primary">Use the camera</button>
+    <button id="setup-keys" class="ghost">Play with the keyboard</button>
+    <p id="setup-status" role="status"></p>
+  </div>
+
+  <div id="lost" hidden><strong>Poppy can't see you</strong><span>Step back into view and the adventure will carry on.</span></div>
+
+  <div id="settings" class="sheet" hidden>
+    <header><h2>Settings</h2><button data-close aria-label="Close">✕</button></header>
+    <label class="row"><span>Read lines aloud</span><input type="checkbox" id="set-voice" checked></label>
+    <label class="row"><span>Volume</span><input type="range" id="set-volume" min="0" max="1" step="0.05" value="0.6"></label>
+    <fieldset class="row">
+      <legend>Explorer</legend>
+      <label><input type="radio" name="age" value="little" checked> Little (3–6)</label>
+      <label><input type="radio" name="age" value="big"> Big (7–12)</label>
+    </fieldset>
+    <p class="fine">Little explorers get steadier stones, shorter holds and fewer cranks.</p>
+  </div>
+
+  <div id="map" class="sheet" hidden>
+    <header><h2>Astra</h2><button data-close aria-label="Close">✕</button></header>
+    <svg viewBox="0 0 400 260" class="mapsvg">
+      <path class="route" d="M150 150 C 180 150, 200 150, 230 148"/>
+      <path class="route dim" d="M245 140 C 280 110, 300 90, 330 80"/>
+      <g data-region="square" data-name="Star Square"><circle cx="120" cy="150" r="34"/><text x="120" y="204">Star Square</text></g>
+      <g data-region="gate" data-name="Gate Rock"><circle cx="240" cy="148" r="16"/><text x="240" y="180">Gate Rock</text></g>
+      <g data-region="forest" data-name="Glow Forest"><circle cx="340" cy="72" r="26"/><text x="340" y="116">???</text></g>
+      <g data-region="observatory" data-name="Lost Observatory"><circle cx="70" cy="44" r="14"/><text x="70" y="74">???</text></g>
+      <g data-region="bay" data-name="Bubble Bay"><circle cx="40" cy="230" r="18"/><text x="96" y="236">???</text></g>
+    </svg>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

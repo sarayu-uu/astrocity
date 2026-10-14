@@ -1,0 +1,261 @@
+// The thin layer of interface on top of the world: subtitles-style dialogue, a place name,
+// a quiet objective line, speech barks above characters, and the move coach for camera play.
+
+import * as THREE from 'three';
+import { CAST } from './buddies.js';
+
+const $ = s => document.querySelector(s);
+
+const FIG = {
+  stand: '<path d="M60 56 L38 92 M60 56 L82 92"/>',
+  star: '<path d="M60 56 L30 16 M60 56 L90 16"/>',
+  bridge: '<path d="M60 58 L10 58 M60 58 L110 58"/>',
+  moon: '<path d="M60 56 L86 12 M60 56 L40 92"/>',
+};
+
+export function figure(kind) {
+  const legs = '<path d="M60 96 L44 146 M60 96 L76 146"/>';
+  const core = '<circle cx="60" cy="27" r="14"/><path d="M60 42 L60 96"/>';
+  if (kind === 'jump') {
+    return `<svg viewBox="0 0 120 170" class="fig fig-jump"><g class="hop">${core}<path d="M60 56 L34 26 M60 56 L86 26"/>${legs}</g><path class="ground" d="M24 164 L96 164"/></svg>`;
+  }
+  if (kind === 'pump') {
+    return `<svg viewBox="0 0 120 170" class="fig fig-pump">${core}${legs}<g class="up">${FIG.star}</g><g class="down">${FIG.stand}</g></svg>`;
+  }
+  return `<svg viewBox="0 0 120 170" class="fig">${core}${FIG[kind] || FIG.stand}${legs}</svg>`;
+}
+
+export class UI {
+  constructor() {
+    this.voice = true;
+    this.onSpeak = () => {};
+    this.barks = [];
+    this._advance = null;
+    this._typing = null;
+
+    const dlg = $('#dialogue');
+    dlg.addEventListener('click', () => this._next());
+    addEventListener('keydown', e => {
+      if ((e.code === 'Enter' || e.code === 'Space') && !$('#dialogue').hidden && !$('#dlg-actions').childElementCount) {
+        e.preventDefault();
+        this._next();
+      }
+    });
+  }
+
+  // ---- Framing ---------------------------------------------------------------
+
+  cinematic(on) { document.body.classList.toggle('cinematic', on); }
+
+  hud(on) { $('#hud').hidden = !on; }
+
+  place(name, sub) {
+    $('#place-name').textContent = name;
+    $('#place-sub').textContent = sub || '';
+    const el = $('#place');
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  objective(text) {
+    const el = $('#objective');
+    el.hidden = !text;
+    if (text) {
+      $('#objective-text').textContent = text;
+      el.classList.remove('pulse');
+      void el.offsetWidth;
+      el.classList.add('pulse');
+    }
+  }
+
+  // ---- Dialogue --------------------------------------------------------------
+
+  // Resolves when the line is dismissed: with the chosen index when choices are given,
+  // or on its own after `auto` seconds (used during movement play, so nobody needs a mouse).
+  say(who, text, { choices = null, auto = null } = {}) {
+    const P = who ? CAST[who] : null;
+    const dlg = $('#dialogue');
+    dlg.hidden = false;
+    dlg.classList.toggle('narration', !P);
+    $('#dlg-name').textContent = P ? P.name : '';
+    $('#dlg-name').style.color = P ? P.color : '';
+    const body = $('#dlg-text');
+    const actions = $('#dlg-actions');
+    actions.innerHTML = '';
+    $('#dlg-next').hidden = !!choices || auto !== null;
+
+    this._speak(who, text);
+
+    // Quick typewriter reveal; clicking finishes it instantly.
+    body.textContent = '';
+    let i = 0;
+    clearInterval(this._typing);
+    this._typing = setInterval(() => {
+      i += 2;
+      body.textContent = text.slice(0, i);
+      if (i >= text.length) {
+        clearInterval(this._typing);
+        this._typing = null;
+      }
+    }, 18);
+
+    return new Promise(resolve => {
+      const done = v => {
+        clearInterval(this._typing);
+        this._typing = null;
+        this._advance = null;
+        clearTimeout(timer);
+        this.onSpeak(who, false);
+        resolve(v);
+      };
+      let timer = null;
+      if (choices) {
+        choices.forEach((label, idx) => {
+          const b = document.createElement('button');
+          b.className = 'choice';
+          b.innerHTML = `<span>${label}</span><kbd>${idx === 0 ? '↵' : idx + 1}</kbd>`;
+          b.addEventListener('click', e => { e.stopPropagation(); this.hideDialogue(); done(idx); });
+          actions.appendChild(b);
+          if (idx === 0) setTimeout(() => b.focus(), 50);
+        });
+      } else if (auto !== null) {
+        timer = setTimeout(() => done(0), auto * 1000);
+      }
+      this._advance = () => {
+        if (this._typing) {
+          clearInterval(this._typing);
+          this._typing = null;
+          body.textContent = text;
+          return;
+        }
+        if (!choices && auto === null) done(0);
+      };
+    });
+  }
+
+  _next() { this._advance?.(); }
+
+  hideDialogue() {
+    $('#dialogue').hidden = true;
+    $('#dlg-actions').innerHTML = '';
+    speechSynthesis?.cancel();
+  }
+
+  _speak(who, text) {
+    this.onSpeak(who, true);
+    if (!this.voice || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/\.\.\./g, ', '));
+    const v = who ? CAST[who].voice : { pitch: 1, rate: 0.95 };
+    u.pitch = v.pitch;
+    u.rate = v.rate;
+    u.onend = () => this.onSpeak(who, false);
+    speechSynthesis.speak(u);
+  }
+
+  // ---- In-world speech barks ---------------------------------------------------
+
+  bark(buddy, text, duration = 1.8) {
+    const el = document.createElement('div');
+    el.className = 'bark';
+    el.textContent = text;
+    el.style.setProperty('--c', buddy.color);
+    document.body.appendChild(el);
+    this.barks.push({ el, buddy, until: performance.now() + duration * 1000 });
+  }
+
+  update(camera) {
+    const v = new THREE.Vector3();
+    const now = performance.now();
+    this.barks = this.barks.filter(b => {
+      if (now > b.until) {
+        b.el.remove();
+        return false;
+      }
+      b.buddy.root.getWorldPosition(v);
+      v.y += 2.1;
+      v.project(camera);
+      b.el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
+      b.el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
+      b.el.hidden = v.z > 1;
+      return true;
+    });
+  }
+
+  tooltip(text, x, y) {
+    const t = $('#tooltip');
+    t.hidden = !text;
+    if (text) {
+      t.textContent = text;
+      t.style.left = `${x}px`;
+      t.style.top = `${y}px`;
+    }
+  }
+
+  // ---- Discovery moments -------------------------------------------------------
+
+  async toast(kicker, title, seconds = 4.5) {
+    const el = $('#toast');
+    el.querySelector('small').textContent = kicker;
+    el.querySelector('strong').textContent = title;
+    el.hidden = false;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    await new Promise(r => setTimeout(r, seconds * 1000));
+    el.hidden = true;
+  }
+
+  async chapterCard(kicker, title) {
+    const el = $('#chapter');
+    el.querySelector('small').textContent = kicker;
+    el.querySelector('strong').textContent = title;
+    el.hidden = false;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    await new Promise(r => setTimeout(r, 5200));
+    el.hidden = true;
+  }
+
+  // ---- Move coach (camera setup + which move to make) ---------------------------
+
+  // Shows the child's camera view next to the move they should make.
+  coach(move, text, sub = '') {
+    const el = $('#coach');
+    el.hidden = false;
+    $('#coach-fig').innerHTML = figure(move);
+    $('#coach-text').textContent = text;
+    $('#coach-sub').textContent = sub;
+  }
+
+  hideCoach() { $('#coach').hidden = true; }
+
+  setCoachProgress(k) {
+    const ring = $('#coach-ring');
+    ring.style.setProperty('--k', String(Math.max(0, Math.min(1, k))));
+    ring.hidden = k <= 0;
+  }
+
+  // Ask how the child will play; resolves 'camera' or 'keyboard'.
+  chooseInput() {
+    const el = $('#setup');
+    el.hidden = false;
+    $('#setup-status').textContent = '';
+    return new Promise(resolve => {
+      $('#setup-camera').onclick = () => resolve('camera');
+      $('#setup-keys').onclick = () => { el.hidden = true; resolve('keyboard'); };
+    });
+  }
+
+  setupStatus(text, isError = false) {
+    const s = $('#setup-status');
+    s.textContent = text;
+    s.classList.toggle('error', isError);
+  }
+
+  hideSetup() { $('#setup').hidden = true; }
+
+  lost(on) { $('#lost').hidden = !on; }
+}

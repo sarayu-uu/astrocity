@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Astra Buddies</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <video id="cam" playsinline muted></video>
+
+  <div id="preview" hidden>
+    <canvas id="preview-canvas" width="320" height="240"></canvas>
+    <div id="track-chip">Step into view</div>
+  </div>
+
+  <button id="btn-quit" class="quit" hidden aria-label="Back to menu">✕</button>
+  <div id="lost-banner" hidden>We can't see you!<br><small>Step back so your whole body fits in the camera.</small></div>
+
+  <section class="screen" id="screen-start">
+    <div class="panel">
+      <h1 class="logo">Astra Buddies</h1>
+      <p class="tagline">Play. Move. Explore. Together.</p>
+      <div class="age">
+        <span>Who's playing?</span>
+        <button class="chip on" data-age="little">Little ones (3–6)</button>
+        <button class="chip" data-age="big">Big kids (7–12)</button>
+      </div>
+      <button id="btn-camera" class="big pink">Play with my body (camera)</button>
+      <button id="btn-keys" class="big ghost">Use the keyboard instead</button>
+      <p class="status" id="start-status" role="status"></p>
+      <p class="note">Clear some space, then stand back so the camera can see you from head to knees.</p>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-pick" hidden>
+    <div class="panel wide">
+      <h2>Pick an adventure</h2>
+      <div class="cards">
+        <button class="card" data-game="hop">
+          <span class="region blue">Bubble Bay</span>
+          <strong>Poppy's Bubble Hop</strong>
+          <span>The wobbly bubbles are rolling in! Jump to help Poppy hop over them.</span>
+          <span class="moves">Move: jump</span>
+        </button>
+        <button class="card" data-game="freeze">
+          <span class="region purple">Star Square</span>
+          <strong>Mimi's Freeze Dance</strong>
+          <span>Dance while the music plays. When it stops, freeze like a statue!</span>
+          <span class="moves">Move: dance, freeze</span>
+        </button>
+      </div>
+      <p class="note" id="controls-hint"></p>
+      <button id="btn-back" class="link">← Change settings</button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-results" hidden>
+    <div class="panel">
+      <h2 id="results-title"></h2>
+      <div class="stars" id="results-stars"></div>
+      <ul id="results-lines"></ul>
+      <p class="message" id="results-message"></p>
+      <div class="row">
+        <button id="btn-again" class="big pink">Play again</button>
+        <button id="btn-menu" class="big ghost">More games</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
