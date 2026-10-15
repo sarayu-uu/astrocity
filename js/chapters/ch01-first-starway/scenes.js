@@ -44,9 +44,9 @@ export async function arrival(g) {
   const flight = rig.flyThrough(
     [[-62, 34, 96], [-48, 28, 78], [-32, 20, 56], [-19, 12, 37], [-9, 6.5, 23], [-4.6, 3, 14.2]],
     [[2, -3, 0], [-3, -1, 4], [-6, 0, 8], [-7, 0.4, 9], [-7, 0.6, 8.9], [-7.1, 0.55, 8.6]],
-    12,
+    6.5,
   );
-  await g.wait(8.5);
+  await g.wait(4.5);
   ui.hud(true);
   ui.place('Star Square', 'Home');
   await flight;

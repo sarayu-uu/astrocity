@@ -544,10 +544,10 @@ export function buildWorld(scene) {
 
   // The relic: a glowing fragment of Starway stone, half-buried in Poppy's garden.
   const relic = new THREE.Group();
-  const relicCore = mesh(new THREE.OctahedronGeometry(0.22, 0), new THREE.MeshStandardMaterial({ color: '#bff6ff', emissive: '#4fe3ff', emissiveIntensity: 2.2, roughness: 0.2, flatShading: true }));
+  const relicCore = mesh(new THREE.OctahedronGeometry(0.22, 0), new THREE.MeshStandardMaterial({ color: '#ff5a86', emissive: '#ff1f5a', emissiveIntensity: 2.2, roughness: 0.2, flatShading: true }));
   relicCore.scale.set(1, 1.5, 1);
   relic.add(relicCore);
-  const relicLight = new THREE.PointLight('#6fe9ff', 6, 5, 2);
+  const relicLight = new THREE.PointLight('#ff4f7e', 6, 5, 2);
   relic.add(relicLight);
   relic.position.set(PLACES.garden[0] - 0.2, -0.05, PLACES.garden[1] + 0.1);
   scene.add(relic);
@@ -570,7 +570,7 @@ export function buildWorld(scene) {
   fountain.add(mesh(new THREE.CylinderGeometry(2.15, 2.15, 0.05, 40), water, { pos: [0, 0.48, 0], cast: false }));
   fountain.add(mesh(new THREE.CylinderGeometry(0.28, 0.4, 1.8, 16), mat('#e8dcc8'), { pos: [0, 1.2, 0] }));
   fountain.add(mesh(new THREE.LatheGeometry([new THREE.Vector2(0, 0), new THREE.Vector2(0.9, 0.2), new THREE.Vector2(1, 0.45), new THREE.Vector2(0.85, 0.4), new THREE.Vector2(0, 0.25)], 30), mat('#e8dcc8'), { pos: [0, 2, 0] }));
-  fountain.add(mesh(new THREE.OctahedronGeometry(0.3, 0), new THREE.MeshStandardMaterial({ color: '#9fe8ff', emissive: '#3fcfff', emissiveIntensity: 0.6, flatShading: true }), { pos: [0, 2.85, 0] }));
+  fountain.add(mesh(new THREE.OctahedronGeometry(0.3, 0), new THREE.MeshStandardMaterial({ color: '#3dffb0', emissive: '#00d98a', emissiveIntensity: 1, flatShading: true }), { pos: [0, 2.85, 0] }));
   const drops = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 6, 4), new THREE.MeshStandardMaterial({ color: '#c9f0ff', transparent: true, opacity: 0.85 }), 60);
   fountain.add(drops);
   const dropSeeds = Array.from({ length: 60 }, () => [rr(0, Math.PI * 2), rr(0, 1)]);
