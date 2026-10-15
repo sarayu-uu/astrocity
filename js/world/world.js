@@ -639,7 +639,7 @@ export function buildWorld(scene) {
 
   // Lamp posts.
   for (const [x, z] of [[3.5, 3.5], [-3.5, -3.5], [-4, 3.6], [4, -3.6], [13, 3], [9, 5.2], [18.5, 2.6]]) {
-    scene.add(mesh(new THREE.CylinderGeometry(0.06, 0.09, 2.6, 8), mat('#3b3f5c'), { pos: [x, 1.3, z] }));
+    scene.add(mesh(new THREE.CylinderGeometry(0.09, 0.135, 2.6, 10), mat('#6b4a5e'), { pos: [x, 1.3, z] }));
     scene.add(mesh(new THREE.SphereGeometry(0.22, 12, 10), new THREE.MeshStandardMaterial({ color: '#fff1c2', emissive: '#ffcf70', emissiveIntensity: 1.2 }), { pos: [x, 2.7, z] }));
   }
 
