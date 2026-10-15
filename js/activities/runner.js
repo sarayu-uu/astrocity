@@ -54,6 +54,7 @@ export default {
       seed: a.seed ?? (Date.now() & 0xffff),
       speed: a.tune.speed,
       legs: a.legs,
+      legSeconds: a.tune.legSeconds,
       patterns: a.patterns,
       breatherEvery: a.tune.breatherEvery ?? (age === 'little' ? 180 : 240),
     });
@@ -95,6 +96,14 @@ export default {
       g.onResume = () => sim.clearAhead(2);
       ui.runHud({ progress: 0, count: 0, onStop: () => { stop = true; } });
       legCoach(sim.legDef(0));
+      // Session log (playtests): each leg's play time (pauses not counted), buns and clears.
+      const snap = () => ({ t: sim.t, buns: sim.stats.buns, bunsSeen: sim.stats.bunsSeen, cleared: sim.stats.cleared });
+      let legSnap = snap();
+      const logLegStart = (leg, def) => {
+        legSnap = snap();
+        g.log('leg.start', { leg, theme: def.theme, teach: !!def.teach, endless: sim.endless });
+      };
+      logLegStart(0, sim.legDef(0));
 
       while (!finished) {
         await g.frame();
@@ -117,6 +126,7 @@ export default {
           } else if (e.type === 'hit') {
             sfx.wobble();
             if (T.hit) say(pick(T.hit, sim.stats.hits), 1.4);
+            g.log('hit', { kind: e.obj.kind, untracked: e.obj.untracked, leg: sim.leg });
           } else if (e.type === 'bun') {
             sfx.pop();
           } else if (e.type === 'star') {
@@ -125,8 +135,17 @@ export default {
             legCoach(null);
             sfx.chime();
             say(sim.legDef(e.leg).doneBark);
+            g.log('teach.done', { leg: e.leg });
           } else if (e.type === 'legEnd') {
             legCoach(null);
+            const now = snap();
+            g.log('leg.end', {
+              leg: e.leg,
+              playSeconds: Math.round((now.t - legSnap.t) * 10) / 10,
+              buns: now.buns - legSnap.buns,
+              bunsSeen: now.bunsSeen - legSnap.bunsSeen,
+              cleared: now.cleared - legSnap.cleared,
+            });
             // A story obstacle at the end of the leg (the sim keeps 2 s clear around it).
             const name = sim.legDef(e.leg).setPiece;
             if (name) {
@@ -142,7 +161,10 @@ export default {
             stage.runner.theme(e.def.theme);
             legCoach(e.def);
             if (!sim.endless) say(e.def.bark, 2.2);
+            // (After the last story leg, a leg only starts for real if the child picks Keep going.)
+            if (!sim.goalReached || sim.endless) logLegStart(e.leg, e.def);
           } else if (e.type === 'breather') {
+            g.log('breather');
             await breather(g, sim);
             acc = 0;
           } else if (e.type === 'goal') {
@@ -161,6 +183,7 @@ export default {
               sim.continueEndless();
               sim.clearAhead(2);
               ui.runHud({ endless: true });
+              logLegStart(sim.leg, sim.currentLeg());
             } else {
               finished = 'story';
             }
@@ -220,12 +243,14 @@ async function result(g, a, sim, endless) {
   const res = { score: sim.score, buns: sim.stats.buns, stars, distance: Math.round(sim.dist) };
   const best = saveBest(a.id, g.settings.age, res);
   sfx.chime();
-  return g.ui.runResult({
+  const choice = await g.ui.runResult({
     title: endless ? 'What a run!' : (a.text?.goal ?? 'You made it!'),
     stars,
     rows: [['Buns', `${sim.stats.buns} / ${sim.stats.bunsSeen}`], ['Distance', `${Math.round(sim.dist)} m`], ['Score', sim.score], ['Best', best.score]],
     more: !endless,
   });
+  g.log('result', { ...res, bunsSeen: sim.stats.bunsSeen, endless, choice });
+  return choice;
 }
 
 // ---- Drawing the sim with the stage's looks (everything built once, then reused) -------

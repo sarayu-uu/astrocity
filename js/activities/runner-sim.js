@@ -48,7 +48,8 @@ export function mulberry32(seed) {
 //   age: 'little' | 'big', play: 'camera' | 'keyboard', seed,
 //   speed: { start, max }, legs: [leg, ...],
 //   patterns: extra pattern definitions, breatherEvery: seconds (0 = never),
-//   maxJumpsInRow (Little: 6), forceSpeed (tests: always this speed), adaptive: true
+//   maxJumpsInRow (Little: 6), forceSpeed (tests: always this speed), adaptive: true,
+//   legSeconds (how long a leg lasts when it gives no length or seconds)
 // }
 // A leg: { length (distance) or seconds (time at this age's speeds), theme, patterns: [names],
 //   tier (lowest pattern tier allowed from the start), teach: { lanes: [-1, 1], timeout } }. Patterns and numbers may differ by age:
@@ -64,7 +65,8 @@ export function createRunSim(config) {
   const byAge = v => (v && typeof v === 'object' && !Array.isArray(v) && ('little' in v || 'big' in v) ? v[age] : v);
   const avgSpeed = (config.speed.start + config.speed.max) / 2;
   const legs = config.legs.map(l => {
-    const leg = { ...l, patterns: byAge(l.patterns), seconds: byAge(l.seconds) };
+    // A leg with no length or seconds of its own lasts config.legSeconds.
+    const leg = { ...l, patterns: byAge(l.patterns), seconds: byAge(l.seconds) ?? (l.length == null && !l.teach ? config.legSeconds : undefined) };
     leg.length = byAge(l.length) ?? (leg.teach ? leg.teach.timeout ?? 40 : leg.seconds) * avgSpeed;
     return leg;
   });

@@ -88,6 +88,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
   const sim = createSetPieceSim({ steps: piece.steps, age: g.settings.age });
   const bot = g.debugAutoplay ? createSetPieceBot(sim) : null;
   g.setPieceSim = sim; // for the dev console and browser tests
+  g.log('bridge.start', { name: piece.scene });
   const doesOf = s => (s?.does && props.does?.[s.does]) || null;
 
   props.leaving = false;
@@ -129,6 +130,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
       sim.update(frameInput, g.dt);
 
       for (const e of sim.events) {
+        logEvent(g, e);
         switch (e.type) {
           case 'ready':
           case 'go':
@@ -193,10 +195,20 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
     ui.arrow(null);
     ui.preview = null;
   }
+  g.log('bridge.end', { name: piece.scene });
   await cameraBack();
   props.exit?.();
   if (leave) leave(props);
   else props.root.visible = false;
+}
+
+// The playtest session log: each step's ready and move time, and every hint shown.
+function logEvent(g, e) {
+  const s = e.step;
+  if (e.type === 'ready') g.log('step.ready', { index: e.index, move: s.move, need: s.times ?? s.sequence?.length ?? s.hold });
+  else if (e.type === 'go') g.log('step.go', { index: e.index });
+  else if (e.type === 'stepDone') g.log('step.done', { index: e.index });
+  else if (['demo', 'ease', 'cantSee', 'readyHint'].includes(e.type)) g.log('help', { kind: e.type });
 }
 
 // The stage builds each set piece's things once, the first time it is needed.

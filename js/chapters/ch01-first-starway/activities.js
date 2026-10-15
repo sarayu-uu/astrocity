@@ -19,6 +19,11 @@ const R = LINES.starStoneRun;
 export const ACTIVITIES = {
   // Star Stone Run: a runner game down the Sky River (replaces Cross the Stones in chapter.js).
   // Legs are the same TIME for both ages; Big runs faster with busier patterns.
+  //
+  // LENGTH KNOBS (if playtests come in short, in this order):
+  //   1. Bridges: each bridge below has one more step ready, commented out. Remove the `//`.
+  //   2. Leg time: tune.all.legSeconds (every running leg lasts this long; 80 now, ~95 next).
+  //   3. Last resort: a fourth leg (copy a leg and give it a setPiece).
   starStoneRun: {
     id: 'ch01.star-stone-run',
     label: 'Chapter 1 · Star Stone Run',
@@ -30,40 +35,46 @@ export const ACTIVITIES = {
     legs: [
       { teach: { lanes: [-1, 1], timeout: 40 }, theme: 'mint', patterns: ['bun-line'], coach: R.teach, doneBark: R.teachDone },
       {
-        seconds: 80, theme: 'mint', setPiece: 'bridge1',
+        theme: 'mint', setPiece: 'bridge1',
         patterns: { little: ['bun-line', 'puff', 'gap', 'puff-buns', 'gap-buns', 'star-stone'], big: ['puff', 'gap', 'puff-buns', 'gap-buns', 'puff-gap', 'double-gap', 'star-stone'] },
       },
       {
-        seconds: 80, theme: 'lilac', tier: 2, setPiece: 'bridge2', bark: R.legs.lilac,
+        theme: 'lilac', tier: 2, setPiece: 'bridge2', bark: R.legs.lilac,
         patterns: { little: ['branch', 'wobble', 'puff', 'gap-buns', 'bun-arc', 'star-stone'], big: ['branch', 'wobble', 'puff-gap', 'bun-arc', 'double-gap', 'star-stone'] },
       },
       {
-        seconds: 80, theme: 'peach', tier: 3, setPiece: 'lastBridge', bark: R.legs.peach,
-        patterns: { little: ['wall-jump', 'sunk', 'branch-wobble', 'puff-gap', 'star-stone'], big: ['wall-jump', 'sunk', 'branch-wobble', 'zigzag', 'double-gap', 'star-stone'] },
+        theme: 'peach', tier: 3, setPiece: 'lastBridge', bark: R.legs.peach,
+        patterns: { little: ['wall-jump', 'sunk', 'branch-wobble', 'puff-gap', 'bun-arc', 'puff-buns', 'star-stone'], big: ['wall-jump', 'sunk', 'branch-wobble', 'zigzag', 'double-gap', 'bun-arc', 'puff-buns', 'star-stone'] },
       },
     ],
     setPieces: {
       bridge1: {
         scene: 'bridge1', helper: 'nutty', intro: R.bridge1.intro, cheer: R.cheers[0], after: S.nuttyDriftsOn,
-        steps: [{ move: 'jump', times: { little: 3, big: 4 }, text: R.bridge1.stomp, does: 'stomp', done: R.bridge1.stomped }],
+        steps: [
+          { move: 'jump', times: { little: 3, big: 4 }, text: R.bridge1.stomp, does: 'stomp', done: R.bridge1.stomped },
+          // { move: 'pose', sequence: ['star'], hold: { little: 0.8, big: 1.2 }, text: R.extra.shine, does: 'shine' },
+        ],
       },
       bridge2: {
         scene: 'bridge2', helper: 'nutty', intro: R.bridge2.intro, cheer: R.cheers[1], after: S.nuttyDriftsOn,
         steps: [
-          { move: 'armsUp', hold: 1.4, text: R.bridge2.lift, does: 'lift', done: R.bridge2.lifted },
+          { move: 'armsUp', hold: 1.4, text: R.bridge2.lift, done: R.bridge2.lifted, does: 'lift' },
           { move: 'jump', times: 2, text: R.bridge2.hop, does: 'settle' },
+          // { move: 'pump', times: { little: 4, big: 6 }, text: R.extra.pump, does: 'firm' },
         ],
       },
       lastBridge: {
         scene: 'lastBridge', helper: 'nutty', intro: R.lastBridge.intro, cheer: R.cheers[2], after: S.poppyLeapsToNutty,
         steps: [
           { move: 'step', sequence: ['left', 'right', 'left'], hold: 0.6, text: R.lastBridge.push, does: 'push' },
+          // { move: 'armsUp', hold: 1.2, text: R.extra.steady, does: 'steady' },
           { move: 'jump', times: 1, text: R.lastBridge.leap, does: 'leap' },
         ],
       },
     },
     beats: { start: S.starStoneStart, end: S.starStoneEnd, resume: S.starStoneResume },
     tune: {
+      all: { legSeconds: 80 },
       little: { speed: { start: 7.5, max: 10.5 }, breatherEvery: 180 },
       big: { speed: { start: 10, max: 15 }, breatherEvery: 240 },
     },

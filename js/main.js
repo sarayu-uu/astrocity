@@ -22,6 +22,7 @@ import { setVolume } from './core/audio.js';
 import { createGame } from './core/game.js';
 import { playChapter, loadProgress, saveProgress, runActivity } from './core/director.js';
 import { CHAPTERS } from './chapters/index.js';
+import { startSessionLog, downloadSessions, clearSessions, loadSessions } from './core/session-log.js';
 
 const $ = s => document.querySelector(s);
 const canvas = $('#view');
@@ -210,11 +211,18 @@ function renderStory() {
   });
 }
 
+// ---- Playtest session log (?debug or ?log; ?kid=A1 labels it) ---------------------------
+const params = new URLSearchParams(location.search);
+const sessionLog = params.has('debug') || params.has('log')
+  ? startSessionLog(g, { kid: params.get('kid'), step: params.get('step') })
+  : null;
+
 // ---- Main loop -------------------------------------------------------------------
 const clock = new THREE.Clock();
 const RESUME_COUNT = 3; // seconds of 3-2-1 after the child steps back into view
 let lostFor = 0;
 let paused = false;
+let pauseWhy = null; // 'tracking' | 'menu', for the session log
 let resumeIn = 0;
 
 function frame() {
@@ -230,6 +238,7 @@ function frame() {
   lostFor = g.needsBody && input.camera && !input.tracking ? lostFor + realDt : 0;
   const sheetOpen = g.needsBody && ['#settings', '#map', '#story'].some(s => !$(s).hidden);
   if (lostFor > 0.6 || sheetOpen) {
+    if (!paused) pauseWhy = lostFor > 0.6 ? 'tracking' : 'menu';
     paused = true;
     ui.lost(lostFor > 0.6);
     resumeIn = RESUME_COUNT;
@@ -243,6 +252,7 @@ function frame() {
       g.onResume?.();
     }
   }
+  sessionLog?.tick(realDt, { input, needsBody: g.needsBody, isPaused: paused, pauseWhy });
 
   // The island is paused (kept as it was) while an activity stage is open.
   if (g.stage) {
@@ -299,6 +309,23 @@ if (new URLSearchParams(location.search).has('debug')) {
     lookF.close();
     const { createMovesPanel } = await import('./core/debug-moves.js');
     debugTick = createMovesPanel(input, gui, { age: () => g.settings.age });
+
+    // Session log: every playtest session saved on this computer (Shift + L downloads too).
+    const logF = gui.addFolder('Session log');
+    const logInfo = { saved: '' };
+    const refresh = () => { logInfo.saved = `${loadSessions().length} saved`; };
+    refresh();
+    logF.add(logInfo, 'saved').name('Sessions').listen().disable();
+    logF.add({ download: () => { sessionLog?.save(); downloadSessions(); refresh(); } }, 'download').name('Download sessions (JSON)');
+    logF.add({
+      clear: () => {
+        if (!confirm('Delete every saved session on this computer? Download them first.')) return;
+        clearSessions();
+        sessionLog?.save(); // keep the one running now
+        refresh();
+      },
+    }, 'clear').name('Clear saved sessions');
+    setInterval(refresh, 5000);
 
     // Stages: enter / leave the test stage, and a 10-round-trip memory check.
     const { enterStage, exitStage } = await import('./core/stage.js');

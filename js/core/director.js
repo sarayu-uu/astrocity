@@ -131,8 +131,10 @@ export async function runActivity(g, activity, fastForward = false) {
   const stageDef = a.stage ? STAGES[a.stage] : null;
   if (a.stage && !stageDef) throw new Error(`Activity "${a.id}" uses unknown stage "${a.stage}"`);
   for (;;) {
+    g.log('activity.start', { id: a.id, age: g.settings.age, play: g.input.mode });
     if (stageDef) await withStage(g, stageDef, stage => engine.run(g, a, stage));
     else await engine.run(g, a);
+    g.log('activity.end', { id: a.id });
     g.needsBody = false;
     ui.hideCoach();
     ui.setCoachProgress(0);

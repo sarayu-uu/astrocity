@@ -244,6 +244,7 @@ export default {
       bridge1() {
         const root = crossing();
         const m = glowMat('#ffe9a8');
+        let stompK = 0, shineK = 0;
         const stones = [-7, -9, -11].map((z, i) => {
           const s = outlined(stoneGeo, m, 0, 0, z, 1.06);
           s.userData.from = { x: [-2.2, 2.4, -1.6][i], y: [1.4, 2.0, 1.1][i], rz: [0.5, -0.4, 0.3][i] };
@@ -256,13 +257,21 @@ export default {
           exit: hideNutty,
           nuttyAway: g => floatAway(g),
           does: {
-            stomp: smooth(k => stones.forEach((s, i) => {
-              const t = clamp01(k * 3 - i), f = s.userData.from;
-              s.position.x = lerp(f.x, 0, t);
-              s.position.y = lerp(f.y, -0.12, t) + Math.sin(performance.now() / 380 + i) * 0.14 * (1 - t);
-              s.rotation.z = lerp(f.rz, 0, t);
-              m.emissiveIntensity = 0.15 + k * 0.5;
-            }), 6),
+            stomp: smooth(k => {
+              stompK = k;
+              stones.forEach((s, i) => {
+                const t = clamp01(k * 3 - i), f = s.userData.from;
+                s.position.x = lerp(f.x, 0, t);
+                s.position.y = lerp(f.y, -0.12, t) + Math.sin(performance.now() / 380 + i) * 0.14 * (1 - t);
+                s.rotation.z = lerp(f.rz, 0, t);
+              });
+              m.emissiveIntensity = 0.15 + stompK * 0.5 + shineK * 1.4;
+            }, 6),
+            // (Spare step) a star pose makes the stones shine.
+            shine: smooth(k => {
+              shineK = k;
+              m.emissiveIntensity = 0.15 + stompK * 0.5 + shineK * 1.4;
+            }, 6),
           },
         };
       },
@@ -294,6 +303,10 @@ export default {
               const t = clamp01(k * 2 - i);
               s.position.y = lerp(3, -0.12, t * t);
             }), 6),
+            // (Spare step) arm pumps make all three stones glow strong.
+            firm: smooth(k => {
+              m.emissiveIntensity = 0.2 + k * 1.3;
+            }, 5),
           },
         };
       },
@@ -337,6 +350,8 @@ export default {
               pointer.position.x = (info.aim ?? 0) * LANE;
               pointer.visible = k < 1;
             }, 5),
+            // (Spare step) arms up holds the planks steady: they glow.
+            steady: smooth(k => { plankMat.emissiveIntensity = 0.2 + k * 1.2; }, 5),
             leap: smooth(k => { padMat.emissiveIntensity = 0.2 + k * 1.6; }, 6),
           },
           // The finish: the planks float away behind them.

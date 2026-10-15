@@ -85,6 +85,12 @@ export const LINES = {
       leap: 'Big jump to Nutty!',
     },
     cheers: ['We can cross!', 'Yes! Keep going!', 'Hooray!'],
+    // Extra bridge steps, ready in activities.js if the game needs to be longer.
+    extra: {
+      shine: 'Make a star! Make the stones shine!',
+      pump: 'Arms up, then down! Make the stones strong!',
+      steady: 'Arms up! Hold the planks steady!',
+    },
     found: ['nutty', 'Poppy! You found me! And my buns!', { auto: 3.5 }],
     drift: [null, 'Behind them, the stones drift away again.', { auto: 3.5 }],
     result: 'You found Nutty!',

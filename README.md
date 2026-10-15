@@ -109,6 +109,8 @@ The **Stages** folder in the `?debug` panel enters and leaves a test stage, and 
 
 Each leg of the test run ends in a set piece, together using every step type (jump, arms-up hold, step left / right, pumps, pose hold). `node tools/test-set-piece.mjs` plays each step type and checks the rules: nothing finishes without the move, a held move can't carry into the next step, and help comes after 12 s and 25 s without progress. `node tools/test-golden.mjs` plays scripted input through the four original engines and compares every frame with `tools/golden/old-engines.json`, so a change to shared move code that alters them shows up (`--update` saves new results on purpose).
 
+**Playtest session log:** add `&log` (records quietly) or `?debug` to the address, and `&kid=A1` to label the child, e.g. `?step=stone-run&log&kid=A1`. Every page load is one session, saved on that computer: per leg time, stumbles by obstacle, each bridge step's time and the hints shown, tracking drops and pauses, frame rates, and the result. **Shift + L** downloads every saved session as JSON (also `?debug` › Session log, which can clear them). No camera picture or body landmarks are saved. Code: `js/core/session-log.js`; anything can add an event with `g.log(type, data)`.
+
 **Jump to a step:** add `?step=<id>` to the address (ids in `chapter.js`), e.g. `?step=stone-run` for the Star Stone Run, or `?debug&step=stone-run` to have the debug panel too. Earlier steps are fast-forwarded, so the world is set up right.
 
 `node tools/test-stone-run.mjs` plays the Star Stone Run's real config for Little and Big (runner and bridges) and reports each leg's time and the whole game's length, for a perfect player and a slower child.
