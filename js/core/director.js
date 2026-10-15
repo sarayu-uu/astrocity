@@ -57,15 +57,24 @@ export function saveBest(activityId, age, result) {
 }
 
 // `onStep(index)` is called whenever a new step starts for real (not while fast-forwarding).
-export async function playChapter(g, chapter, { onStep = () => {} } = {}) {
+// `jumpTo` (a step id, from ?step=… in the address) skips the title and fast-forwards there.
+export async function playChapter(g, chapter, { onStep = () => {}, jumpTo = null } = {}) {
   const { ui } = g;
   const steps = chapter.steps;
   const progress = loadProgress(chapter.id);
 
   chapter.setup(g);
   const resume = Math.min(progress.resume, steps.length - 1);
-  const choice = await ui.title({ continueName: resume > 0 ? steps[resume].name : null });
-  const startAt = choice === 'continue' ? resume : 0;
+  const jumpIndex = jumpTo ? steps.findIndex(s => s.id === jumpTo) : -1;
+  if (jumpTo && jumpIndex < 0) console.warn(`?step=${jumpTo}: no such step. Steps: ${steps.map(s => s.id).join(', ')}`);
+  let startAt;
+  if (jumpIndex >= 0) {
+    ui.hideTitle();
+    startAt = jumpIndex;
+  } else {
+    const choice = await ui.title({ continueName: resume > 0 ? steps[resume].name : null });
+    startAt = choice === 'continue' ? resume : 0;
+  }
   startAmbient();
 
   if (startAt > 0) ui.curtain(true, `Going to: ${steps[startAt].name}`);

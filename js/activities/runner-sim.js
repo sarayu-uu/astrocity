@@ -18,8 +18,8 @@
 import { PATTERNS, MOVE_OF, isObstacle } from './runner-patterns.js';
 
 export const STEP = 1 / 60;
-const WINDOW_BEFORE = 1.0;
-const WINDOW_AFTER = 0.2;
+export const WINDOW_BEFORE = 1.0;
+export const WINDOW_AFTER = 0.2;
 const TELEGRAPH = 1.5; // seconds ahead the move icon shows
 const JUMP_TIME = 0.6; // seconds in the air
 const STUMBLE_TIME = 1.5;
@@ -46,10 +46,14 @@ export function mulberry32(seed) {
 
 // config: {
 //   age: 'little' | 'big', play: 'camera' | 'keyboard', seed,
-//   speed: { start, max }, legs: [{ length, theme, patterns: [names] }],
+//   speed: { start, max }, legs: [leg, ...],
 //   patterns: extra pattern definitions, breatherEvery: seconds (0 = never),
 //   maxJumpsInRow (Little: 6), forceSpeed (tests: always this speed), adaptive: true
 // }
+// A leg: { length (distance) or seconds (time at this age's speeds), theme, patterns: [names],
+//   tier (lowest pattern tier allowed from the start), teach: { lanes: [-1, 1], timeout } }. Patterns and numbers may differ by age:
+//   patterns: { little: [...], big: [...] }. A teach leg ends early once a bun is caught in
+//   each of its lanes (or after `timeout` seconds), and is left out when endless mode loops.
 export function createRunSim(config) {
   const rng = mulberry32(config.seed ?? 1);
   const age = config.age ?? 'little';
@@ -57,8 +61,17 @@ export function createRunSim(config) {
   const patterns = { ...PATTERNS, ...config.patterns };
   const laneTime = LANE_TIME[play][age];
   const reaction = REACTION[age];
-  const legs = config.legs;
-  const storyLength = legs.reduce((s, l) => s + l.length, 0);
+  const byAge = v => (v && typeof v === 'object' && !Array.isArray(v) && ('little' in v || 'big' in v) ? v[age] : v);
+  const avgSpeed = (config.speed.start + config.speed.max) / 2;
+  const legs = config.legs.map(l => {
+    const leg = { ...l, patterns: byAge(l.patterns), seconds: byAge(l.seconds) };
+    leg.length = byAge(l.length) ?? (leg.teach ? leg.teach.timeout ?? 40 : leg.seconds) * avgSpeed;
+    return leg;
+  });
+  const loopLegs = legs.filter(l => !l.teach);
+  const legDef = i => (i < legs.length ? legs[i] : loopLegs[(i - legs.length) % loopLegs.length]);
+  const lengths = []; // leg lengths changed while running (a teach leg ending early)
+  const legLen = i => lengths[i] ?? legDef(i).length;
 
   const sim = {
     t: 0, dist: 0, speed: config.speed.start,
@@ -72,22 +85,23 @@ export function createRunSim(config) {
     runTime: 0, breatherDue: false,
     get airborne() { return this.jumpT >= 0 && this.jumpT < JUMP_TIME; },
     get jumpK() { return this.airborne ? this.jumpT / JUMP_TIME : 0; },
-    get progress() { return Math.min(1, this.dist / storyLength); },
+    get progress() { return Math.min(1, this.dist / legEnd(legs.length - 1)); },
     get legInfo() { return this.currentLeg(); },
+    teachLanes: new Set(), // lanes a bun was caught in during a teach leg
     get score() { return Math.round(this.dist) + this.stats.buns * 10 + this.stats.stars * 50; },
   };
 
   // ---- Legs and speed -----------------------------------------------------------------
 
-  sim.currentLeg = () => legs[sim.leg % legs.length];
+  sim.legDef = legDef;
+  sim.currentLeg = () => legDef(sim.leg);
   const legMax = () => config.speed.max;
   // The speed the generator plans for: the fastest this leg can get, after adaptive bumps.
   const planSpeed = () => config.forceSpeed ?? legMax() * ADAPT_MAX;
 
   function updateSpeed() {
     if (config.forceSpeed) return (sim.speed = config.forceSpeed);
-    const leg = sim.currentLeg();
-    const k = Math.min(1, (sim.dist - sim.legStart) / leg.length);
+    const k = Math.min(1, (sim.dist - sim.legStart) / legLen(sim.leg));
     const base = config.speed.start + (config.speed.max - config.speed.start) * k;
     sim.speed = base * sim.speedMul * (sim.stumbleT > 0 ? STUMBLE_SLOW : 1);
   }
@@ -120,7 +134,9 @@ export function createRunSim(config) {
   }
 
   function choosePattern(leg) {
-    let names = leg.patterns.filter(n => (patterns[n]?.tier ?? 1) <= sim.tier);
+    // A leg can open harder tiers from the start (leg.tier), so its new obstacles show up.
+    const tier = Math.max(sim.tier, leg.tier ?? 1);
+    let names = leg.patterns.filter(n => (patterns[n]?.tier ?? 1) <= tier);
     if (!names.length) names = leg.patterns;
     // Little kids: never more than maxJumpsInRow jumps without something else.
     const maxJumps = config.maxJumpsInRow ?? (age === 'little' ? 6 : Infinity);
@@ -182,7 +198,7 @@ export function createRunSim(config) {
   // Where leg i ends (legs repeat in endless mode).
   const legEnd = i => {
     let end = 0;
-    for (let k = 0; k <= i; k++) end += legs[k % legs.length].length;
+    for (let k = 0; k <= i; k++) end += legLen(k);
     return end;
   };
   const legEndD = () => legEnd(sim.leg);
@@ -198,7 +214,7 @@ export function createRunSim(config) {
     while (genD < horizon) {
       const i = legAt(genD);
       // Story over (until Keep going): stop just before the end.
-      if (!sim.endless && genD >= storyLength - 2 * v) return;
+      if (!sim.endless && genD >= legEnd(legs.length - 1) - 2 * v) return;
       // Leave 2 s clear either side of every leg boundary (the set piece goes there).
       const end = legEnd(i);
       if (genD > end - 2 * v) {
@@ -217,7 +233,7 @@ export function createRunSim(config) {
         lure = null;
         continue;
       }
-      placePattern(choosePattern(legs[i % legs.length]));
+      placePattern(choosePattern(legDef(i)));
     }
   }
 
@@ -304,6 +320,7 @@ export function createRunSim(config) {
             if (o.kind === 'bun') sim.stats.buns++;
             else sim.stats.stars++;
             sim.events.push({ type: o.kind, obj: o });
+            if (o.kind === 'bun') teachProgress(o.lane);
           }
         }
         continue;
@@ -334,12 +351,41 @@ export function createRunSim(config) {
       sim.leg++;
       sim.legStart = legEnd(sim.leg - 1);
       if (sim.endless) sim.tier = Math.min(3, sim.tier + 1);
-      sim.events.push({ type: 'legStart', leg: sim.leg, theme: sim.currentLeg().theme });
+      sim.teachLanes.clear();
+      fitLegToTime(sim.leg);
+      sim.events.push({ type: 'legStart', leg: sim.leg, theme: sim.currentLeg().theme, def: sim.currentLeg() });
     }
 
     // Forget what is well behind.
     if (sim.objects.length > 200) sim.objects = sim.objects.filter(o => o.D > prevDist - 30);
   };
+
+  // A leg given in seconds is sized as it starts, at the speed the child is playing at now
+  // (adaptive speed included), so it lasts about that long for any age or skill.
+  function fitLegToTime(i) {
+    const def = legDef(i);
+    if (def.seconds && !config.forceSpeed) lengths[i] = def.seconds * avgSpeed * sim.speedMul;
+  }
+  fitLegToTime(0);
+
+  // A teach leg ends (2 s later) once a bun has been caught in each of its lanes. What was
+  // already laid out further on is cleared, so the next leg starts fresh after a 2 s gap.
+  function teachProgress(lane) {
+    const teach = sim.currentLeg().teach;
+    if (!teach || sim.leg >= legs.length) return;
+    sim.teachLanes.add(lane);
+    if (!(teach.lanes ?? [-1, 1]).every(l => sim.teachLanes.has(l))) return;
+    const v = Math.max(sim.speed, 1);
+    const end = sim.dist + 2 * v;
+    if (end >= legEnd(sim.leg)) return;
+    lengths[sim.leg] = end - sim.legStart;
+    sim.objects = sim.objects.filter(o => o.passed || o.judged || o.D < sim.dist);
+    genD = end + 2 * planSpeed();
+    lastObstacle = null;
+    lure = null;
+    possibleLanes = [-1, 0, 1];
+    sim.events.push({ type: 'teachDone', leg: sim.leg });
+  }
 
   function nearest(lanes, from) {
     return lanes.reduce((best, l) => (Math.abs(l - from) < Math.abs(best - from) ? l : best), lanes[0]);
@@ -357,7 +403,7 @@ export function createRunSim(config) {
     } else {
       s.hits++;
       s.combo = 0;
-      s.stumblesPerLeg[sim.leg % legs.length]++;
+      if (sim.leg < legs.length) s.stumblesPerLeg[sim.leg]++;
       sim.stumbleT = STUMBLE_TIME;
       sim.events.push({ type: 'hit', obj: o });
     }

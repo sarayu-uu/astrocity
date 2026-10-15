@@ -71,7 +71,9 @@ js/core/                   shared systems, not tied to any chapter
 js/world/
   world.js                 Star Square, the bridge, Gate Rock, Glow Forest, sky
   buddies.js               the five plush characters and their animation states
-js/stages/                 activity stage worlds (test-stage.js, test-track.js: ?debug tests)
+js/stages/                 activity stage worlds
+  sky-river.js             the Star Stone Run: river canyon, stone lanes, obstacle looks, three bridges
+  test-stage.js, test-track.js   plain stages for ?debug tests
 js/activities/             reusable movement engines (no story text inside)
   hop-stones.js            jump across drifting stones, lift a sunken one
   side-step.js             step left / right where the arrow points
@@ -91,6 +93,7 @@ js/chapters/
     scenes.js              story scenes (camera and staging)
     lines.js               every line of dialogue, in simple English
     activities.js          each activity: label, engine, difficulty, text, world object
+    run-scenes.js          story moments inside the Star Stone Run (start, bridges, finish)
 ```
 
 ### Testing moves
@@ -105,6 +108,10 @@ The **Stages** folder in the `?debug` panel enters and leaves a test stage, and 
 **Runner test** plays a short run on the test track; tick **Autoplay runs (bot)** to watch the bot play it. `node tools/test-runner.mjs` plays every built-in pattern for Little and Big at the fastest speed the game reaches, with the bot changing lanes as slowly as a child on camera, and fails if any obstacle can't be cleared.
 
 Each leg of the test run ends in a set piece, together using every step type (jump, arms-up hold, step left / right, pumps, pose hold). `node tools/test-set-piece.mjs` plays each step type and checks the rules: nothing finishes without the move, a held move can't carry into the next step, and help comes after 12 s and 25 s without progress. `node tools/test-golden.mjs` plays scripted input through the four original engines and compares every frame with `tools/golden/old-engines.json`, so a change to shared move code that alters them shows up (`--update` saves new results on purpose).
+
+**Jump to a step:** add `?step=<id>` to the address (ids in `chapter.js`), e.g. `?step=stone-run` for the Star Stone Run, or `?debug&step=stone-run` to have the debug panel too. Earlier steps are fast-forwarded, so the world is set up right.
+
+`node tools/test-stone-run.mjs` plays the Star Stone Run's real config for Little and Big (runner and bridges) and reports each leg's time and the whole game's length, for a perfect player and a slower child.
 
 To check a recording without a browser, run `node tools/replay-moves.mjs recording.json`. It prints when each move starts and stops. You can override a threshold, for example `--duckDrop 0.2`.
 

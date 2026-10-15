@@ -11,7 +11,78 @@
 // To make a new version for another chapter, copy an entry into that chapter's activities.js
 // and change the words, numbers and world object. The engine stays the same.
 
+import { LINES } from './lines.js';
+import * as S from './run-scenes.js';
+
+const R = LINES.starStoneRun;
+
 export const ACTIVITIES = {
+  // Star Stone Run: a runner game down the Sky River (replaces Cross the Stones in chapter.js).
+  // Legs are the same TIME for both ages; Big runs faster with busier patterns.
+  starStoneRun: {
+    id: 'ch01.star-stone-run',
+    label: 'Chapter 1 · Star Stone Run',
+    engine: 'runner',
+    stage: 'sky-river',
+    hero: 'poppy',
+    place: ['The Sky River', 'Down the old bridge'],
+    goal: R.goal,
+    legs: [
+      { teach: { lanes: [-1, 1], timeout: 40 }, theme: 'mint', patterns: ['bun-line'], coach: R.teach, doneBark: R.teachDone },
+      {
+        seconds: 80, theme: 'mint', setPiece: 'bridge1',
+        patterns: { little: ['bun-line', 'puff', 'gap', 'puff-buns', 'gap-buns', 'star-stone'], big: ['puff', 'gap', 'puff-buns', 'gap-buns', 'puff-gap', 'double-gap', 'star-stone'] },
+      },
+      {
+        seconds: 80, theme: 'lilac', tier: 2, setPiece: 'bridge2', bark: R.legs.lilac,
+        patterns: { little: ['branch', 'wobble', 'puff', 'gap-buns', 'bun-arc', 'star-stone'], big: ['branch', 'wobble', 'puff-gap', 'bun-arc', 'double-gap', 'star-stone'] },
+      },
+      {
+        seconds: 80, theme: 'peach', tier: 3, setPiece: 'lastBridge', bark: R.legs.peach,
+        patterns: { little: ['wall-jump', 'sunk', 'branch-wobble', 'puff-gap', 'star-stone'], big: ['wall-jump', 'sunk', 'branch-wobble', 'zigzag', 'double-gap', 'star-stone'] },
+      },
+    ],
+    setPieces: {
+      bridge1: {
+        scene: 'bridge1', helper: 'nutty', intro: R.bridge1.intro, cheer: R.cheers[0], after: S.nuttyDriftsOn,
+        steps: [{ move: 'jump', times: { little: 3, big: 4 }, text: R.bridge1.stomp, does: 'stomp', done: R.bridge1.stomped }],
+      },
+      bridge2: {
+        scene: 'bridge2', helper: 'nutty', intro: R.bridge2.intro, cheer: R.cheers[1], after: S.nuttyDriftsOn,
+        steps: [
+          { move: 'armsUp', hold: 1.4, text: R.bridge2.lift, does: 'lift', done: R.bridge2.lifted },
+          { move: 'jump', times: 2, text: R.bridge2.hop, does: 'settle' },
+        ],
+      },
+      lastBridge: {
+        scene: 'lastBridge', helper: 'nutty', intro: R.lastBridge.intro, cheer: R.cheers[2], after: S.poppyLeapsToNutty,
+        steps: [
+          { move: 'step', sequence: ['left', 'right', 'left'], hold: 0.6, text: R.lastBridge.push, does: 'push' },
+          { move: 'jump', times: 1, text: R.lastBridge.leap, does: 'leap' },
+        ],
+      },
+    },
+    beats: { start: S.starStoneStart, end: S.starStoneEnd, resume: S.starStoneResume },
+    tune: {
+      little: { speed: { start: 7.5, max: 10.5 }, breatherEvery: 180 },
+      big: { speed: { start: 10, max: 15 }, breatherEvery: 240 },
+    },
+    text: { hit: R.hit, goal: R.result },
+    // The island after this game (also for Skip and Continue): Poppy is across the old bridge
+    // with Nutty, and the stones wobble again, so they are both stuck. Same as Cross the Stones.
+    islandEnd(g) {
+      const bridge = g.W.bridge;
+      bridge.stones.forEach(s => {
+        s.userData.sunk = false;
+        s.userData.raise = 1;
+      });
+      bridge.drift = g.settings.age === 'big' ? 1.25 : 0.55;
+      bridge.highlight(-1, false);
+      g.B.poppy.place(bridge.landing.x, bridge.landing.z, bridge.landing.y);
+    },
+  },
+
+  // The original stone crossing on the island (kept as a fallback; not in chapter.js now).
   crossStones: {
     id: 'ch01.cross-stones',
     label: 'Chapter 1 · Cross the Stones',

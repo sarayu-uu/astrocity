@@ -7,6 +7,7 @@
 //     cast: ['poppy', 'nutty'],            // buddies to copy into the stage
 //     build(stage, g) { ... },             // fill stage.scene, place stage.camera and stage.cast
 //     update(stage, dt, t) { ... },        // optional, every frame while open
+//     music: 'sky-river',                  // optional: its own music (audio.js), island music fades
 //   }
 //
 //   await withStage(g, def, async stage => { ...play... })   enter, run, always exit
@@ -19,6 +20,7 @@
 
 import * as THREE from 'three';
 import { Buddy } from '../world/buddies.js';
+import { stageMusic } from './audio.js';
 
 const FLASH = 0.5; // seconds Poppy's stone flashes before the portal
 
@@ -47,6 +49,7 @@ export async function enterStage(g, def, { instant = false } = {}) {
   g.stage = stage;
   g.cast = stage.cast;
   g.setView(stage.scene, stage.camera);
+  if (def.music) stageMusic(def.music);
   if (!instant) await g.ui.portal(false);
   return stage;
 }
@@ -59,6 +62,7 @@ export async function exitStage(g, { instant = false } = {}) {
   g.stage = null;
   g.cast = g.B;
   g.setView(null);
+  if (stage.def.music) stageMusic(null);
   g.ui.hideDialogue();
   disposeStage(g, stage);
   if (!instant) await g.ui.portal(false);

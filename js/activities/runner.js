@@ -7,8 +7,12 @@
 // Activity config:
 //   stage: 'name'                  a stage that provides stage.runner looks (see test-track.js)
 //   hero: 'poppy'                  the buddy who runs
-//   legs: [{ length, theme, patterns: [names], setPiece: 'name' }]
+//   legs: [{ length or seconds, theme, patterns, tier, setPiece: 'name', bark, coach, teach }]
+//                                  (see runner-sim.js; bark is said as the leg starts, coach shows
+//                                  a coach card through the leg, e.g. the teach leg)
 //   setPieces: { name: {...} }     story obstacles at the end of legs (see set-piece.js)
+//   beats: { start, end, resume }  story moments in the stage: before the run, after the last
+//                                  set piece (before the result card), and on Keep going
 //   patterns: { name: {...} }      extra patterns for this chapter (see runner-patterns.js)
 //   tune.little / tune.big: { speed: { start, max }, breatherEvery }
 //   text: { hit: [lines], goal }
@@ -17,8 +21,8 @@
 import * as THREE from 'three';
 import { sfx } from '../core/audio.js';
 import { saveBest } from '../core/director.js';
-import { createRunSim, createBot, STEP } from './runner-sim.js';
-import { pick } from './common.js';
+import { createRunSim, createBot, STEP, WINDOW_BEFORE, WINDOW_AFTER } from './runner-sim.js';
+import { coach, pick } from './common.js';
 import { playSetPiece } from './set-piece.js';
 
 const LANE_W = 2.2;
@@ -57,18 +61,41 @@ export default {
     // ?debug › Autoplay: the test bot plays instead of the child (keyboard lane speed).
     const bot = g.debugAutoplay ? createBot(sim, { age, play: 'keyboard' }) : null;
     g.runSim = sim; // for the dev console and browser tests
-    stage.runner.theme(a.legs[0].theme);
+    stage.runner.theme(sim.legDef(0).theme);
     hero.place(0, 0).faceNow(0, -10);
-    hero.state = 'run';
+    // The chase camera, so it can come back exactly after story shots.
+    const chase = { pos: stage.camera.position.clone(), quat: stage.camera.quaternion.clone() };
+    const toChase = () => {
+      stage.camera.position.copy(chase.pos);
+      stage.camera.quaternion.copy(chase.quat);
+    };
+    const say = (text, seconds = 2) => text && ui.bark(hero, text, seconds, { voice: true });
+    // A leg's coach card (the teach leg): what to do, with the camera's thirds shown.
+    const legCoach = def => {
+      if (def?.coach) {
+        coach(g, 'left', def.coach);
+        ui.preview = { zones: true };
+      } else {
+        ui.hideCoach();
+        ui.preview = null;
+      }
+    };
 
-    g.needsBody = true;
-    g.onResume = () => sim.clearAhead(2);
     let stop = false;
-    ui.runHud({ progress: 0, count: 0, onStop: () => { stop = true; } });
-
     let acc = 0;
     let finished = null;
     try {
+      // The opening story beat (dialogue may pause here; the run hasn't started).
+      if (a.beats?.start) {
+        hero.state = 'idle';
+        await a.beats.start(g, stage, { hero, sim });
+      }
+      hero.state = 'run';
+      g.needsBody = true;
+      g.onResume = () => sim.clearAhead(2);
+      ui.runHud({ progress: 0, count: 0, onStop: () => { stop = true; } });
+      legCoach(sim.legDef(0));
+
       while (!finished) {
         await g.frame();
         acc += g.dt;
@@ -89,31 +116,48 @@ export default {
             }
           } else if (e.type === 'hit') {
             sfx.wobble();
-            if (T.hit) ui.bark(hero, pick(T.hit, sim.stats.hits), 1.4);
+            if (T.hit) say(pick(T.hit, sim.stats.hits), 1.4);
           } else if (e.type === 'bun') {
             sfx.pop();
           } else if (e.type === 'star') {
             sfx.chime();
+          } else if (e.type === 'teachDone') {
+            legCoach(null);
+            sfx.chime();
+            say(sim.legDef(e.leg).doneBark);
           } else if (e.type === 'legEnd') {
+            legCoach(null);
             // A story obstacle at the end of the leg (the sim keeps 2 s clear around it).
-            const name = a.legs[e.leg % a.legs.length].setPiece;
+            const name = sim.legDef(e.leg).setPiece;
             if (name) {
               const piece = a.setPieces?.[name];
               if (!piece) throw new Error(`Activity "${a.id}": no set piece "${name}"`);
+              ui.moveCue(null);
               await playSetPiece(g, stage, { helper: a.hero, ...piece }, { hero, leave: props => view.leave(props) });
               hero.state = 'run';
               sim.clearAhead(2);
               acc = 0;
             }
           } else if (e.type === 'legStart') {
-            stage.runner.theme(a.legs[e.leg % a.legs.length].theme);
+            stage.runner.theme(e.def.theme);
+            legCoach(e.def);
+            if (!sim.endless) say(e.def.bark, 2.2);
           } else if (e.type === 'breather') {
             await breather(g, sim);
             acc = 0;
           } else if (e.type === 'goal') {
+            // The closing story beat, then the result card.
+            if (a.beats?.end) {
+              g.needsBody = false;
+              await a.beats.end(g, stage, { hero, sim });
+            }
             const choice = await result(g, a, sim, false);
             acc = 0;
             if (choice === 'more') {
+              a.beats?.resume?.(g, stage, { hero, sim });
+              toChase();
+              hero.place(sim.laneX * LANE_W, 0).faceNow(0, -10);
+              g.needsBody = true;
               sim.continueEndless();
               sim.clearAhead(2);
               ui.runHud({ endless: true });
@@ -132,12 +176,16 @@ export default {
         updateHero(hero, sim);
         ui.runHud({ progress: sim.endless ? null : sim.progress, count: sim.stats.buns, stars: sim.stats.stars });
       }
+      // Back on the island, things are as this game leaves them.
+      a.islandEnd?.(g);
     } finally {
       g.onResume = null;
       g.runSim = null;
       g.needsBody = false;
       ui.runHud(null);
       ui.moveCue(null);
+      ui.hideCoach();
+      ui.preview = null;
     }
   },
 
@@ -151,6 +199,7 @@ export default {
 
 function updateHero(hero, sim) {
   hero.root.position.x = sim.laneX * LANE_W;
+  hero.root.position.z = 0;
   hero.root.position.y = sim.airborne ? Math.sin(sim.jumpK * Math.PI) * JUMP_HEIGHT : 0;
   hero.airborne = sim.airborne;
   hero.state = sim.stumbleT > 0 ? 'stumble' : sim.duck && !sim.airborne ? 'duck' : 'run';
@@ -273,7 +322,12 @@ function createView(stage, sim) {
             o.rise = Math.min(1, (o.rise ?? 0) + (o.cleared ? dt * 3 : 0));
             m.position.y = -0.5 + o.rise * 0.6;
           }
-          if (o.kind === 'wobble') m.position.y = Math.sin(spin * 3 + o.D) * 0.06;
+          if (o.kind === 'wobble') {
+            m.position.y = Math.sin(spin * 3 + o.D) * 0.06;
+            // It glows for exactly the move window: a jump any time in the glow counts.
+            const arrival = rel / Math.max(sim.speed, 0.1);
+            m.userData.glow?.(!o.judged && arrival <= WINDOW_BEFORE && arrival >= -WINDOW_AFTER ? 1 : 0);
+          }
         }
       }
       for (const [kind, list] of Object.entries(pools)) for (let i = used[kind]; i < list.length; i++) list[i].visible = false;

@@ -2,8 +2,10 @@
 
 import test from './test-stage.js';
 import testTrack from './test-track.js';
+import skyRiver from './sky-river.js';
 
 export const STAGES = {
   [test.id]: test,
   [testTrack.id]: testTrack,
+  [skyRiver.id]: skyRiver,
 };

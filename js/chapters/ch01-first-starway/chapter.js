@@ -16,7 +16,7 @@ export default {
     { id: 'arrival', name: 'Poppy finds a stone', scene: S.arrival },
     { id: 'ask-around', name: 'Where is Nutty?', scene: S.askAround },
     { id: 'to-bridge', name: 'The old bridge', scene: S.toBridge },
-    { id: 'cross-stones', name: 'Cross the stones', activity: A.crossStones },
+    { id: 'stone-run', name: 'Star Stone Run', activity: A.starStoneRun },
     { id: 'gate-rock', name: 'The big potato', scene: S.gateRock },
     { id: 'aim-dish', name: 'Aim the dish', activity: A.aimDish },
     { id: 'sky-crank', name: 'Turn the Sky Crank', activity: A.skyCrank },

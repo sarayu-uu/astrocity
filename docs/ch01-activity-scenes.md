@@ -230,6 +230,19 @@ starStoneRun: {
 
 **Done when:** a Little player can finish with the camera in under 8 minutes without help; every set piece shows its move changing the scene; Skip and Continue land in `gateRock` with Poppy and Nutty together at Gate Rock.
 
+**As built (Phase 5).** The real config is `starStoneRun` in `activities.js`; the stage is `js/stages/sky-river.js`; the story beats are in `run-scenes.js`. Changes from the sketch above:
+
+- **Legs are the same time for both ages** (`seconds: 80` each, sized at the start of each leg from the current speed, adaptive speed-up included). Big runs faster with busier patterns instead of getting shorter legs. A `tier` per leg makes its new obstacles appear from the start (wobble stones in leg 2, walls and sunk stones in leg 3).
+- **Teach ends on success:** a bun caught in the left lane and one in the right lane, or 40 s.
+- **Wobble stones** use the move window and jump buffer like gaps; the stone glows for exactly the window.
+- **Readability:** soft, desaturated background (sky, banks, walls, far islands, softened trees); obstacles bright with a dark outline, checked in all three themes.
+- **Dialogue** pauses only at the start, the bridges and the finish; lines during the run are spoken barks that never block.
+- **Camera:** a fixed chase camera, slightly low; no shake on stumbles. Bridges 1 and 2 use a high side view (Poppy left, Nutty right); the last bridge is seen from behind so left and right match the child.
+- **Finish:** Nutty gets his buns back ("You found me! And my buns!"), the planks drift away and the narrator says "Behind them, the stones drift away again." Then the result card, then Gate Rock ("BOTH stuck").
+- **Bank scenery** is part of each recycled track piece; trees are merged into a few meshes. About 400–500 draw calls a frame in the stage (shadow and AO passes included), against about 2,100 on the island; memory is flat over repeated trips.
+- **Length** (`tools/test-stone-run.mjs`): about 5.0–5.6 min for a perfect player and 5.3–5.9 min for a slower simulated child, Little and Big alike. Real children (stumbles, help, slower bridges) should land nearer 6; the playtests will tell.
+- `?step=stone-run` jumps straight into the game for testing.
+
 ## Game 2: Sky Power (above the clouds)
 
 Lumi's dish turns into a flying saucer; Lumi and Poppy fly above the clouds catching power sparks for the Sky Crank, find the gate's signal, and unjam the crank until it reaches full power. Engine: runner in fly mode plus set-piece. Length: 6–8 minutes.

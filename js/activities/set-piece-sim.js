@@ -261,8 +261,9 @@ export function createSetPieceSim({ steps, age = 'little' }) {
 }
 
 // The test bot: does whatever the set piece asks, a little after it asks, like a keen child
-// on the keyboard. Returns the input for one frame each time it is called.
-export function createSetPieceBot(sim, { delay = 0.4 } = {}) {
+// on the keyboard. Returns the input for one frame each time it is called. `delay` is how long
+// it takes to react to a new ask; `pace` stretches its jumps and pumps (2 = half as fast).
+export function createSetPieceBot(sim, { delay = 0.4, pace = 1 } = {}) {
   let t = 0, since = 0, lastKey = '';
   return (dt = 1 / 60) => {
     t += dt;
@@ -277,10 +278,10 @@ export function createSetPieceBot(sim, { delay = 0.4 } = {}) {
     if (sim.phase !== 'move' || since < delay) return input;
     switch (w.move) {
       case 'jump':
-        input.jump = Math.floor((since - delay) / 0.5) !== Math.floor((since - delay - dt) / 0.5);
+        input.jump = Math.floor((since - delay) / (0.5 * pace)) !== Math.floor((since - delay - dt) / (0.5 * pace));
         break;
       case 'pump': {
-        const up = Math.floor((since - delay) / 0.35) % 2 === 0;
+        const up = Math.floor((since - delay) / (0.35 * pace)) % 2 === 0;
         input.armsUp = up;
         input.armsDown = !up;
         input.pose = up ? 'star' : null;

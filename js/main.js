@@ -339,5 +339,7 @@ if (new URLSearchParams(location.search).has('debug')) {
 
 document.fonts.ready.finally(() => {
   requestAnimationFrame(frame);
-  playChapter(g, chapter, { onStep: i => { currentStep = i; } }).catch(err => console.error(err));
+  // ?step=stone-run (any step id in chapter.js) jumps straight to that step, for testing.
+  const jumpTo = new URLSearchParams(location.search).get('step');
+  playChapter(g, chapter, { onStep: i => { currentStep = i; }, jumpTo }).catch(err => console.error(err));
 });

@@ -108,6 +108,50 @@ const CHORDS = [[60, 64, 67, 71], [57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 6
 const SCALE = [72, 74, 76, 79, 81, 84];
 let timer = null;
 
+// Music for an activity stage, by name (the stage's `music`), or null to go back to the island's.
+// The island's music fades out while a stage plays its own, then fades back in.
+const STAGE_MUSIC = {
+  // The Sky River: a bright, bouncy loop on a pentatonic scale, about 112 beats a minute.
+  'sky-river': { beat: 60 / 112, bass: [48, 48, 45, 43], notes: [72, 74, 76, 79, 81, 84, 86] },
+};
+let stageTimer = null;
+let stageBus = null;
+
+export function stageMusic(name) {
+  const c = audio();
+  clearInterval(stageTimer);
+  stageTimer = null;
+  const t = c.currentTime;
+  const song = STAGE_MUSIC[name];
+  musicBus.gain.cancelScheduledValues(t);
+  musicBus.gain.setTargetAtTime(song ? 0 : 0.35, t, 0.4);
+  if (stageBus) {
+    const old = stageBus;
+    old.gain.setTargetAtTime(0, t, 0.3);
+    setTimeout(() => old.disconnect(), 2000);
+    stageBus = null;
+  }
+  if (!song) return;
+  stageBus = c.createGain();
+  stageBus.gain.value = 0;
+  stageBus.gain.setTargetAtTime(0.32, t, 0.6);
+  stageBus.connect(master);
+  const bus = stageBus;
+  let step = 0;
+  let next = t + 0.2;
+  stageTimer = setInterval(() => {
+    while (next < c.currentTime + 0.4) {
+      const bar = Math.floor(step / 8);
+      if (step % 8 === 0) tone(midi(song.bass[bar % song.bass.length]), next, song.beat * 3.6, { type: 'sine', vol: 0.13, bus });
+      if (step % 2 === 0) tone(midi(song.bass[bar % song.bass.length] + 24), next, 0.18, { type: 'triangle', vol: 0.035, bus });
+      const n = song.notes[(step * 3 + bar * 2) % song.notes.length];
+      if (step % 8 !== 7) tone(midi(n), next, song.beat * 0.9, { vol: 0.05, bus });
+      next += song.beat / 2;
+      step++;
+    }
+  }, 150);
+}
+
 export function startAmbient() {
   if (timer) return;
   const c = audio();

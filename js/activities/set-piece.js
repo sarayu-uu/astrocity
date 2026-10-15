@@ -11,6 +11,8 @@
 //     steps: [{ move, times / hold / sequence, text, does, done }, ...]   (see set-piece-sim.js)
 //     cheer: 'The stones are back!',   said in the celebration
 //     helper: 'nutty',                 the buddy who shows the move when the child is stuck
+//     intro: [[who, text, opts]],      lines before the steps (they move on by themselves)
+//     after(g, stage, props, hero),    a story beat once the steps are done, before the cheer
 //   }
 //
 // What the stage's set-piece builder returns:
@@ -21,6 +23,7 @@
 //                                      the child (-1..1); info.instant = jump to it (Skip).
 //                                      Make them with stage.smooth() so jitter never shakes.
 //     cheerAt: [x, y, z],              where the celebration sparkles burst (optional)
+//     enter(), exit(),                 called as the piece starts and ends (optional)
 //   }
 //
 // Use it as its own activity (engine: 'set-piece', with a stage), or from the runner at the end
@@ -97,7 +100,13 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
     hero.state = 'idle';
   }
   ui.moveCue(null);
+  props.enter?.();
   const cameraBack = await swingCamera(g, stage.camera, props.shot);
+
+  // A set piece may open with a few lines (they move on by themselves).
+  g.needsBody = false;
+  for (const [who, text, opts] of piece.intro ?? []) await ui.say(who, text, opts ?? { auto: 3 });
+  ui.hideDialogue();
 
   g.needsBody = true;
   input.consumeJump();
@@ -176,6 +185,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
     ui.setCoachProgress(0);
     ui.arrow(null);
     ui.preview = null;
+    await piece.after?.(g, stage, props, hero);
     await celebrate(g, stage, props, hero, piece.cheer);
   } finally {
     g.setPieceSim = null;
@@ -184,6 +194,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
     ui.preview = null;
   }
   await cameraBack();
+  props.exit?.();
   if (leave) leave(props);
   else props.root.visible = false;
 }

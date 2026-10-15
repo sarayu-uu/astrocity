@@ -55,6 +55,41 @@ export const LINES = {
     letsHop: ['poppy', "Let's hop across and get him!", { choices: ['Help Poppy'] }],
   },
 
+  // The Star Stone Run (a runner game on the Sky River). Lines with `auto` move on by
+  // themselves, so a child playing on camera never needs the mouse.
+  starStoneRun: {
+    goal: 'Follow the buns to Nutty!',
+    start: [
+      ['poppy', 'Whoa! The stones floated down the river!', { auto: 3 }],
+      ['nutty', 'Poppy! Follow my buns! I dropped them!', { auto: 3 }],
+    ],
+    teach: { title: 'Step left and right to catch the buns!', camera: 'Move your whole body.', keys: 'Hold ← or →.' },
+    teachDone: 'Yum! Now run!',
+    legs: { lilac: 'The river is purple now!', peach: 'Sunset! Go, go, go!' },
+    hit: ['Oops! Keep going!', 'Wobble! You got this!', 'Up we get!', 'Oof! Try again!'],
+    bridge1: {
+      intro: [['nutty', 'The bridge broke! Stomp the stones down!', { auto: 3 }]],
+      stomp: 'Jump! Stomp the stones into a line!',
+      stomped: 'The stones are in a line!',
+    },
+    bridge2: {
+      intro: [['nutty', 'Oh no! A stone sank!', { auto: 2.6 }]],
+      lift: 'Arms up! Lift the stone!',
+      lifted: 'You lifted it!',
+      hop: 'Now jump! Make it hold!',
+    },
+    further: 'Further down! Come on!',
+    lastBridge: {
+      intro: [['nutty', 'Push the planks to me!', { auto: 2.6 }]],
+      push: 'Push the planks! Step to the {side}!',
+      leap: 'Big jump to Nutty!',
+    },
+    cheers: ['We can cross!', 'Yes! Keep going!', 'Hooray!'],
+    found: ['nutty', 'Poppy! You found me! And my buns!', { auto: 3.5 }],
+    drift: [null, 'Behind them, the stones drift away again.', { auto: 3.5 }],
+    result: 'You found Nutty!',
+  },
+
   gateRock: {
     bothStuck: ['nutty', 'You came! But now we are BOTH stuck.'],
     look: ['poppy', 'Look, Nutty. Your potato has a hole on top.'],

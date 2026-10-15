@@ -90,6 +90,12 @@ export class UI {
     });
   }
 
+  // Straight past the title (?step=… for testing).
+  hideTitle() {
+    $('#title').hidden = true;
+    audio();
+  }
+
   // ---- Framing ---------------------------------------------------------------
 
   cinematic(on) { document.body.classList.toggle('cinematic', on); }
@@ -210,8 +216,11 @@ export class UI {
 
   // ---- In-world speech barks ---------------------------------------------------
 
-  bark(buddy, text, duration = 1.8) {
+  // A short line above a buddy's head. It never waits for anyone; { voice: true } also says it
+  // aloud (lines during a run, spoken over the action).
+  bark(buddy, text, duration = 1.8, { voice = false } = {}) {
     if (this.isSkipping()) return;
+    if (voice) this._speak(buddy.kind, text);
     const el = document.createElement('div');
     el.className = 'bark';
     el.textContent = text;
