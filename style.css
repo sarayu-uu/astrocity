@@ -477,6 +477,13 @@ body:not(.cinematic) #btn-skip { top: 76px; }
 .sheet fieldset label { font-weight: 700; color: var(--muted); }
 .sheet input[type=checkbox], .sheet input[type=radio] { accent-color: var(--sun); }
 .sheet input[type=range] { accent-color: var(--sun); width: 140px; }
+.sheet .records { display: grid; gap: 8px; }
+.sheet .records .row-inline { font-weight: 700; color: var(--text); }
+.record-actions { display: flex; gap: 8px; }
+.record-actions button { padding: 7px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.12); font-weight: 700; }
+.record-actions .ghost { background: none; border: 1px solid var(--line); }
+#story-games { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+#story-games button { padding: 8px 14px; border-radius: 999px; background: var(--sun); color: var(--ink); font-family: var(--display); font-weight: 600; }
 .fine { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
 
 .mapsvg { width: 100%; height: auto; }
@@ -594,8 +601,15 @@ body:not(.cinematic) #btn-skip { top: 76px; }
 }
 #run-pill .bun { width: 26px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #f6c27a, #c98a3c); }
 #run-stars { color: var(--sun); font-size: 18px; }
+#run-pill.sparks .bun { width: 18px; height: 18px; border-radius: 3px; transform: rotate(45deg); background: radial-gradient(circle at 40% 35%, #fffbd0, #ffd447); box-shadow: 0 0 10px #ffe680; }
 #run-stop { display: none; position: absolute; top: 130px; right: clamp(16px, 3vw, 36px); padding: 8px 16px; border-radius: 999px; background: var(--glass); font-family: var(--display); font-weight: 600; pointer-events: auto; }
 #run-hud.endless #run-stop { display: block; }
+/* Sky Power's charge meter: a tall bar on the left that fills with sparks. */
+#run-meter { position: absolute; left: clamp(16px, 3vw, 36px); top: 50%; width: 26px; height: min(300px, 44vh); transform: translateY(-50%); border-radius: 999px; background: rgba(20, 15, 40, 0.4); border: 2px solid rgba(255, 255, 255, 0.5); }
+#run-meter-fill { position: absolute; inset: 0; display: block; border-radius: inherit; background: linear-gradient(0deg, #ffb347, #ffe680); transform-origin: bottom; transform: scaleY(0); transition: transform 0.3s ease; }
+#run-meter span { position: absolute; left: 50%; bottom: -2px; transform: translate(-50%, 100%); font-size: 22px; }
+#run-meter.full { box-shadow: 0 0 18px #ffe680; }
+#run-meter[hidden] { display: none; }
 
 #cue {
   position: fixed;

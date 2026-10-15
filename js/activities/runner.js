@@ -7,6 +7,10 @@
 // Activity config:
 //   stage: 'name'                  a stage that provides stage.runner looks (see test-track.js)
 //   hero: 'poppy'                  the buddy who runs
+//   mode: 'fly'                    fly instead of run: two heights (arms up / down), sparks,
+//                                  rings, rocks, arches, gusts. The stage provides stage.flyer
+//                                  ({ root, update(sim, dt) }) and runner.heights { low, high }.
+//   meter: { fullAt }              a charge meter on the HUD that fills with what is collected
 //   legs: [{ length or seconds, theme, patterns, tier, setPiece: 'name', bark, coach, teach }]
 //                                  (see runner-sim.js; bark is said as the leg starts, coach shows
 //                                  a coach card through the leg, e.g. the teach leg)
@@ -28,14 +32,14 @@ import { playSetPiece } from './set-piece.js';
 const LANE_W = 2.2;
 const SEG_LEN = 20;
 const SEGMENTS = 8;
-const POOL = { block: 10, gap: 5, wobble: 5, high: 5, sunk: 5 };
+const POOL = { block: 10, gap: 5, wobble: 5, high: 5, sunk: 5, rock: 5, arch: 5, gust: 4, ring: 8 };
 const VISIBLE = { behind: 8, ahead: 90 }; // track distance drawn around the hero
 const JUMP_HEIGHT = 1.6;
 
 // The child's body (or keys) as the sim's input. `jump` only on the first step of a frame.
 // A MotionInput in replay mode works here too, so recordings can drive a run later.
 export function inputFromMotion(input) {
-  return { zone: input.zone, jump: input.consumeJump(), duck: input.duck, armsUp: input.armsUp, tracking: input.tracking };
+  return { zone: input.zone, jump: input.consumeJump(), duck: input.duck, armsUp: input.armsUp, lean: input.lean, tracking: input.tracking };
 }
 
 export default {
@@ -57,13 +61,17 @@ export default {
       legSeconds: a.tune.legSeconds,
       patterns: a.patterns,
       breatherEvery: a.tune.breatherEvery ?? (age === 'little' ? 180 : 240),
+      mode: a.mode,
     });
     const view = createView(stage, sim);
     // ?debug › Autoplay: the test bot plays instead of the child (keyboard lane speed).
     const bot = g.debugAutoplay ? createBot(sim, { age, play: 'keyboard' }) : null;
     g.runSim = sim; // for the dev console and browser tests
     stage.runner.theme(sim.legDef(0).theme);
-    hero.place(0, 0).faceNow(0, -10);
+    // Fly mode: the stage's flyer (a flying dish with the buddies on it) moves instead of a
+    // running buddy; the hero rides it.
+    const flyer = a.mode === 'fly' ? stage.flyer : null;
+    if (!flyer) hero.place(0, 0).faceNow(0, -10);
     // The chase camera, so it can come back exactly after story shots.
     const chase = { pos: stage.camera.position.clone(), quat: stage.camera.quaternion.clone() };
     const toChase = () => {
@@ -71,14 +79,18 @@ export default {
       stage.camera.quaternion.copy(chase.quat);
     };
     const say = (text, seconds = 2) => text && ui.bark(hero, text, seconds, { voice: true });
-    // A leg's coach card (the teach leg): what to do, with the camera's thirds shown.
+    // A leg's coach card (the teach leg): what to do, with the camera's thirds shown. With
+    // coachFor it hides after that many seconds of play.
+    let coachLeft = Infinity;
     const legCoach = def => {
       if (def?.coach) {
-        coach(g, 'left', def.coach);
+        coach(g, def.coachFigure ?? 'left', def.coach);
         ui.preview = { zones: true };
+        coachLeft = def.coachFor ?? Infinity;
       } else {
         ui.hideCoach();
         ui.preview = null;
+        coachLeft = Infinity;
       }
     };
 
@@ -91,10 +103,10 @@ export default {
         hero.state = 'idle';
         await a.beats.start(g, stage, { hero, sim });
       }
-      hero.state = 'run';
+      hero.state = flyer ? 'sit' : 'run';
       g.needsBody = true;
       g.onResume = () => sim.clearAhead(2);
-      ui.runHud({ progress: 0, count: 0, onStop: () => { stop = true; } });
+      ui.runHud({ progress: 0, count: 0, sparks: a.mode === 'fly', onStop: () => { stop = true; } });
       legCoach(sim.legDef(0));
       // Session log (playtests): each leg's play time (pauses not counted), buns and clears.
       const snap = () => ({ t: sim.t, buns: sim.stats.buns, bunsSeen: sim.stats.bunsSeen, cleared: sim.stats.cleared });
@@ -120,15 +132,19 @@ export default {
           if (e.type === 'telegraph') {
             const dir = e.move === 'lane' ? Math.sign(e.toward - sim.lane) : 0;
             if (e.move !== 'lane' || dir !== 0) {
-              ui.moveCue(e.move === 'lane' ? (dir < 0 ? 'left' : 'right') : e.move);
-              sfx.cue(e.move, dir);
+              const cue = e.move === 'lane' ? (dir < 0 ? 'left' : 'right') : e.move === 'lean' ? `lean-${e.obj.dir}` : e.move;
+              ui.moveCue(cue);
+              sfx.cue(e.move === 'up' ? 'armsUp' : e.move, e.move === 'lean' ? (e.obj.dir === 'left' ? -1 : 1) : dir);
             }
           } else if (e.type === 'hit') {
             sfx.wobble();
             if (T.hit) say(pick(T.hit, sim.stats.hits), 1.4);
             g.log('hit', { kind: e.obj.kind, untracked: e.obj.untracked, leg: sim.leg });
-          } else if (e.type === 'bun') {
+          } else if (e.type === 'bun' || e.type === 'spark') {
             sfx.pop();
+          } else if (e.type === 'ring') {
+            sfx.charge(Math.min(1, sim.stats.buns / (a.meter?.fullAt ?? 100)));
+            sfx.chime();
           } else if (e.type === 'star') {
             sfx.chime();
           } else if (e.type === 'teachDone') {
@@ -152,8 +168,8 @@ export default {
               const piece = a.setPieces?.[name];
               if (!piece) throw new Error(`Activity "${a.id}": no set piece "${name}"`);
               ui.moveCue(null);
-              await playSetPiece(g, stage, { helper: a.hero, ...piece }, { hero, leave: props => view.leave(props) });
-              hero.state = 'run';
+              await playSetPiece(g, stage, { helper: a.hero, ...piece }, { hero, keepHero: !!flyer, leave: props => view.leave(props) });
+              hero.state = flyer ? 'sit' : 'run';
               sim.clearAhead(2);
               acc = 0;
             }
@@ -178,7 +194,7 @@ export default {
             if (choice === 'more') {
               a.beats?.resume?.(g, stage, { hero, sim });
               toChase();
-              hero.place(sim.laneX * LANE_W, 0).faceNow(0, -10);
+              if (!flyer) hero.place(sim.laneX * LANE_W, 0).faceNow(0, -10);
               g.needsBody = true;
               sim.continueEndless();
               sim.clearAhead(2);
@@ -195,9 +211,14 @@ export default {
           finished = 'story';
         }
 
+        if (coachLeft !== Infinity && (coachLeft -= g.dt) <= 0) legCoach(null);
         view.update(g.dt);
-        updateHero(hero, sim);
-        ui.runHud({ progress: sim.endless ? null : sim.progress, count: sim.stats.buns, stars: sim.stats.stars });
+        if (flyer) flyer.update(sim, g.dt);
+        else updateHero(hero, sim);
+        ui.runHud({
+          progress: sim.endless ? null : sim.progress, count: sim.stats.buns, stars: sim.stats.stars,
+          meter: a.meter ? Math.min(1, sim.stats.buns / a.meter.fullAt) : undefined,
+        });
       }
       // Back on the island, things are as this game leaves them.
       a.islandEnd?.(g);
@@ -246,7 +267,7 @@ async function result(g, a, sim, endless) {
   const choice = await g.ui.runResult({
     title: endless ? 'What a run!' : (a.text?.goal ?? 'You made it!'),
     stars,
-    rows: [['Buns', `${sim.stats.buns} / ${sim.stats.bunsSeen}`], ['Distance', `${Math.round(sim.dist)} m`], ['Score', sim.score], ['Best', best.score]],
+    rows: [[a.text?.collect ?? 'Buns', `${sim.stats.buns} / ${sim.stats.bunsSeen}`], ['Distance', `${Math.round(sim.dist)} m`], ['Score', sim.score], ['Best', best.score]],
     more: !endless,
   });
   g.log('result', { ...res, bunsSeen: sim.stats.bunsSeen, endless, choice });
@@ -266,8 +287,10 @@ function createView(stage, sim) {
     return s;
   });
 
+  // A pool per obstacle look the stage has (a stage only draws the kinds it uses).
   const pools = {};
   for (const [kind, n] of Object.entries(POOL)) {
+    if (!looks.obstacle[kind]) continue;
     pools[kind] = Array.from({ length: n }, () => {
       const m = looks.obstacle[kind]();
       m.visible = false;
@@ -321,28 +344,34 @@ function createView(stage, sim) {
       const used = Object.fromEntries(Object.keys(pools).map(k => [k, 0]));
       const take = kind => pools[kind][used[kind]++];
       let nb = 0, ns = 0;
+      // Fly mode: how high low and high are (the stage says), for sparks and rings.
+      const heightY = h => (sim.fly ? looks.heights.low + (h ?? 0) * (looks.heights.high - looks.heights.low) : 0.8);
       for (const o of sim.objects) {
         const rel = o.D - sim.dist;
         if (rel < -VISIBLE.behind || rel > VISIBLE.ahead) continue;
         const z = -rel;
-        if (o.kind === 'bun' || o.kind === 'star') {
+        if (o.kind === 'bun' || o.kind === 'spark' || o.kind === 'star') {
           if (o.taken) continue;
-          const mesh = o.kind === 'bun' ? buns : stars;
-          if ((o.kind === 'bun' ? nb : ns) >= mesh.instanceMatrix.count) continue;
-          tmp.position.set(o.lane * LANE_W, 0.8 + o.arc * 1.5, z);
+          const isStar = o.kind === 'star';
+          const mesh = isStar ? stars : buns;
+          if ((isStar ? ns : nb) >= mesh.instanceMatrix.count) continue;
+          tmp.position.set(o.lane * LANE_W, heightY(o.height) + o.arc * 1.5, z);
           tmp.rotation.set(0, spin + o.D, 0);
           tmp.updateMatrix();
-          mesh.setMatrixAt(o.kind === 'bun' ? nb++ : ns++, tmp.matrix);
+          mesh.setMatrixAt(isStar ? ns++ : nb++, tmp.matrix);
           continue;
         }
         if (o.kind === 'breather') continue;
-        const lanes = o.kind === 'block' || o.kind === 'wall' ? o.blocked : [null];
+        if (o.kind === 'ring' && o.taken) continue;
+        const lanes = o.kind === 'block' || o.kind === 'wall' ? o.blocked : o.kind === 'ring' ? [o.lane] : [null];
         for (const lane of lanes) {
           const kind = o.kind === 'wall' ? 'block' : o.kind;
-          if (used[kind] >= pools[kind].length) continue;
+          if (!pools[kind] || used[kind] >= pools[kind].length) continue;
           const m = take(kind);
           m.visible = true;
-          m.position.set(lane === null ? 0 : lane * LANE_W, 0, z);
+          m.position.set(lane === null ? 0 : lane * LANE_W, o.kind === 'ring' ? heightY(o.height) : 0, z);
+          if (o.kind === 'gust') m.scale.x = o.dir === 'left' ? -1 : 1; // the wind blows this way
+          m.userData.animate?.(spin, o);
           if (o.kind === 'sunk') {
             o.rise = Math.min(1, (o.rise ?? 0) + (o.cleared ? dt * 3 : 0));
             m.position.y = -0.5 + o.rise * 0.6;

@@ -240,7 +240,7 @@ starStoneRun: {
 - **Camera:** a fixed chase camera, slightly low; no shake on stumbles. Bridges 1 and 2 use a high side view (Poppy left, Nutty right); the last bridge is seen from behind so left and right match the child.
 - **Finish:** Nutty gets his buns back ("You found me! And my buns!"), the planks drift away and the narrator says "Behind them, the stones drift away again." Then the result card, then Gate Rock ("BOTH stuck").
 - **Bank scenery** is part of each recycled track piece; trees are merged into a few meshes. About 400–500 draw calls a frame in the stage (shadow and AO passes included), against about 2,100 on the island; memory is flat over repeated trips.
-- **Length** (`tools/test-stone-run.mjs`): about 5.0–5.6 min for a perfect player and 5.3–5.9 min for a slower simulated child, Little and Big alike. Real children (stumbles, help, slower bridges) should land nearer 6; the playtests will tell.
+- **Length** (`tools/test-games.mjs`): about 5.0–5.6 min for a perfect player and 5.3–5.9 min for a slower simulated child, Little and Big alike. Real children (stumbles, help, slower bridges) should land nearer 6; the playtests will tell.
 - `?step=stone-run` jumps straight into the game for testing.
 
 ## Game 2: Sky Power (above the clouds)
@@ -303,6 +303,15 @@ skyPower: {
 ```
 
 **Done when:** arms up/down reliably switch height with the camera (with a 0.15 s hold to avoid flicker); the signal and crank set pieces keep the old beats; Skip and Continue leave the dish pointed at the gate and the crank full, exactly as `aimDish` and `skyCrank` do now.
+
+**As built (Phase 6).** The config is `skyPower` in `activities.js` (one chapter step, replacing Aim the Dish and Turn the Sky Crank); the stage is `js/stages/sky-above.js`; the story beats are in `run-scenes.js`.
+
+- **Fly mode** is part of the runner (`mode: 'fly'`): arms up held 0.15 s flies high, arms down flies low, eased over about 0.25 s. New kinds: crystal rocks (be high), crystal arches (be low), gusts (lean that way during the window; Big only), sparks at a height, spark rings worth 5. Track spacing allows time to change height (camera Little 1.0 s, Big 0.8 s).
+- **Heights per leg:** Little gets heights from leg 2, Big from leg 1, and each leg sets `heights` by age. Legs are 80 s for both ages (`tune.all.legSeconds`), like the Star Stone Run.
+- **Charge meter** on the left of the HUD fills with sparks (`meter.fullAt: 100`); the counter shows sparks.
+- **Moments:** Find the Signal (step left/right; the antenna sweeps, the last side locks the beam on the gate), Crank Jam (pumps spin the crank; the gear clicks back in), Full Power (6 pumps, then a star pose fires the beam). Each has a spare step ready in the config.
+- **Finish:** the beam reaches across the sky to the gate ("FULL POWER! Point the beam at the gate!"), the result card, then the `beam` scene. The island is left with the dish pointed at the gate and the crank full.
+- **Length** (`tools/test-games.mjs`): 5.0–5.6 min for a perfect player and 5.3–5.9 min for a slower simulated child; no stumbles for the camera-speed bot in any pattern or full run.
 
 ## Game 3: Gate Trials (inside the sleeping gate)
 

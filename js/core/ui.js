@@ -31,7 +31,15 @@ export function figure(kind) {
   if (kind === 'duck') {
     return `<svg viewBox="0 0 120 170" class="fig fig-duck"><circle cx="60" cy="78" r="14"/><path d="M60 93 L60 120 M60 100 L36 112 M60 100 L84 112 M60 120 L40 132 L46 156 M60 120 L80 132 L74 156"/><path class="ground" d="M24 164 L96 164"/></svg>`;
   }
-  if (kind === 'armsUp') kind = 'star';
+  // Fly mode: arms down (fly low), and lean the way the wind blows.
+  if (kind === 'down') {
+    return `<svg viewBox="0 0 120 170" class="fig fig-down">${core}<path d="M60 56 L42 96 M60 56 L78 96"/>${legs}<path class="arrow" d="M100 40 L100 90 M90 78 L100 90 L110 78"/></svg>`;
+  }
+  if (kind === 'lean-left' || kind === 'lean-right') {
+    const s = kind === 'lean-left' ? -1 : 1;
+    return `<svg viewBox="0 0 120 170" class="fig fig-lean"><g transform="rotate(${s * 16} 60 146)">${core}${FIG.stand}</g>${legs}<path class="arrow" d="M${60 - s * 40} 14 L${60 + s * 40} 14 M${60 + s * 28} 4 L${60 + s * 40} 14 L${60 + s * 28} 24"/></svg>`;
+  }
+  if (kind === 'armsUp' || kind === 'up') kind = 'star';
   if (kind in STEP) {
     return `<svg viewBox="0 0 120 176" class="fig fig-step fig-step-${kind}"><g class="body">${core}${FIG.stand}${legs}</g>${STEP[kind]}</svg>`;
   }
@@ -381,16 +389,26 @@ export class UI {
     if (!state) {
       el.hidden = true;
       $('#run-stop').onclick = null;
+      this._meterOn = false;
+      $('#run-meter').hidden = true;
       return;
     }
     el.hidden = false;
     if (state.onStop) $('#run-stop').onclick = state.onStop;
+    if (state.sparks !== undefined) $('#run-pill').classList.toggle('sparks', state.sparks); // a spark, not a bun
     if (state.endless !== undefined) el.classList.toggle('endless', state.endless);
     if (state.progress !== undefined) {
       $('#run-progress').hidden = state.progress === null;
       if (state.progress !== null) $('#run-fill').style.transform = `scaleX(${state.progress})`;
     }
     if (state.count !== undefined) $('#run-count').textContent = state.count;
+    // A charge meter (Sky Power): 0..1, or absent for games without one.
+    $('#run-meter').hidden = state.meter === undefined && !this._meterOn;
+    if (state.meter !== undefined) {
+      this._meterOn = true;
+      $('#run-meter-fill').style.transform = `scaleY(${state.meter})`;
+      $('#run-meter').classList.toggle('full', state.meter >= 1);
+    }
     if (state.stars !== undefined) $('#run-stars').textContent = state.stars ? `★ ${state.stars}` : '';
   }
 

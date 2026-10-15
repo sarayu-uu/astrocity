@@ -1,6 +1,6 @@
-// A playtest session log: what happened while a child played, saved on this computer and
-// downloaded as JSON to send back. On with ?debug or ?log in the address (?log records quietly,
-// with no debug panels). ?kid=A1 labels the session so it matches the tester sheet.
+// A playtest session log ("play records"): what happened while a child played, saved on this
+// computer and downloaded as JSON to send back. On with Settings › Record play sessions, or
+// ?log / ?debug in the address. ?kid=A1 labels the session so it matches a tester sheet.
 //
 //   g.log(type, data)     anything can add an event; with logging off it does nothing
 //   Shift + L             download every saved session (also ?debug › Session log)
@@ -9,6 +9,8 @@
 // download loses nothing. No camera picture or body landmarks are saved.
 
 const KEY = 'astra.sessions.v1';
+let keyBound = false; // Shift + L is set up once, however often recording is switched on
+let currentSave = null;
 const FPS_EVERY = 10; // seconds between frame-rate samples
 
 export function loadSessions() {
@@ -63,6 +65,7 @@ export function startSessionLog(g, { kid = null, step = null } = {}) {
   const save = () => {
     clearTimeout(saveTimer);
     saveTimer = null;
+    if (session.events.length < 2) return; // nothing happened yet: don't keep an empty session
     try {
       const all = loadSessions().filter(s => s.id !== session.id);
       all.push(session);
@@ -80,13 +83,17 @@ export function startSessionLog(g, { kid = null, step = null } = {}) {
   };
   g.log('session', { age: g.settings.age });
 
-  addEventListener('keydown', e => {
-    if (e.code === 'KeyL' && e.shiftKey) {
-      save();
-      const n = downloadSessions();
-      flash(`Saved ${n} session${n === 1 ? '' : 's'}`);
-    }
-  });
+  currentSave = save;
+  if (!keyBound) {
+    keyBound = true;
+    addEventListener('keydown', e => {
+      if (e.code === 'KeyL' && e.shiftKey) {
+        currentSave?.();
+        const n = downloadSessions();
+        flash(`Saved ${n} session${n === 1 ? '' : 's'}`);
+      }
+    });
+  }
 
   // Called every frame by the main loop: tracking drops, pauses and frame rates.
   let tracked = true, dropAt = 0, paused = false, pauseAt = 0, fpsT = 0, frames = 0;

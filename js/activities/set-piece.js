@@ -80,8 +80,9 @@ export default {
 };
 
 // Plays one set piece in `stage`. `leave(props)` takes the scene's things away afterwards (the
-// runner scrolls them past); without it they are just hidden.
-export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
+// runner scrolls them past); without it they are just hidden. `keepHero` leaves the hero where
+// it is (riding Lumi's flying dish) instead of standing it at the start.
+export async function playSetPiece(g, stage, piece, { hero, leave, keepHero = false } = {}) {
   const { ui, input } = g;
   const props = setPieceProps(stage, piece.scene);
   const helper = (piece.helper && stage.cast[piece.helper]) || hero;
@@ -94,11 +95,13 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
   props.leaving = false;
   props.root.position.set(0, 0, 0);
   props.root.visible = true;
+  const allDoes = Object.values(props.does ?? {});
+  for (const d of allDoes) d.live = true;
   for (const s of sim.steps) doesOf(s)?.(0, { instant: true, aim: 0 });
   if (hero) {
-    hero.place(0, 0).faceNow(0, -10);
+    if (!keepHero) hero.place(0, 0).faceNow(0, -10);
     hero.airborne = false;
-    hero.state = 'idle';
+    hero.state = keepHero ? 'sit' : 'idle';
   }
   ui.moveCue(null);
   props.enter?.();
@@ -142,7 +145,8 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
             sfx.count(e.n);
             if (e.step.move === 'jump' && hero) {
               sfx.jump();
-              hero.hop(new THREE.Vector3(hero.x, 0, hero.z), 0.9, 0.45).then(() => sfx.land());
+              const seat = hero.seatY ?? 0; // a rider hops on its seat
+              hero.hop(new THREE.Vector3(hero.x, seat, hero.z), 0.9, 0.45).then(() => sfx.land());
             }
             break;
           case 'stepDone':
@@ -197,6 +201,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave } = {}) {
   }
   g.log('bridge.end', { name: piece.scene });
   await cameraBack();
+  for (const d of allDoes) d.live = false; // the scene stays as the steps left it
   props.exit?.();
   if (leave) leave(props);
   else props.root.visible = false;
@@ -259,7 +264,7 @@ function showStepCoach(g, sim) {
 async function demonstrate(g, b, want, camera) {
   const before = b.state;
   const beforePose = b.pose;
-  const at = new THREE.Vector3(b.x, 0, b.z);
+  const at = new THREE.Vector3(b.x, b.seatY ?? 0, b.z); // (a rider stays on its seat)
   b.face(camera.position.x, camera.position.z);
   try {
     if (want.move === 'jump') {

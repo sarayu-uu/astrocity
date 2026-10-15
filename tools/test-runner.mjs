@@ -37,11 +37,16 @@ function play(config, seconds, { seed = 1 } = {}) {
 }
 
 console.log('Every pattern, at the fastest reachable speed, camera lane-change times:');
+// Patterns with heights, rings or gusts run in fly mode, at the flying speeds.
+const FLY_KINDS = ['spark', 'ring', 'rock', 'arch', 'gust'];
+const FLY_SPEED = { little: { start: 7.5, max: 11 }, big: { start: 10, max: 16 } };
 for (const age of ['little', 'big']) {
   for (const name of Object.keys(PATTERNS)) {
-    const fast = SPEED[age].max * ADAPT_MAX;
+    const fly = PATTERNS[name].items.some(i => FLY_KINDS.includes(i.kind));
+    const speed = fly ? FLY_SPEED[age] : SPEED[age];
+    const fast = speed.max * ADAPT_MAX;
     const { hits, cleared } = play({
-      age, play: 'camera', seed: 3, speed: SPEED[age], forceSpeed: fast, adaptive: false,
+      age, play: 'camera', seed: 3, speed, forceSpeed: fast, adaptive: false, mode: fly ? 'fly' : undefined,
       legs: [{ length: fast * 60, patterns: [name] }],
     }, 70);
     const hasObstacles = PATTERNS[name].items.some(i => isObstacle(i.kind));

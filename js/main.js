@@ -192,6 +192,21 @@ let currentStep = 0;
 function renderStory() {
   const { reached } = loadProgress(chapter.id);
   $('#story-chapter').textContent = `Chapter ${chapter.number} · ${chapter.title}`;
+  // The movement games (runner and fly mode), playable any time: the story before them is
+  // fast-forwarded, so the world is set up right.
+  const games = $('#story-games');
+  games.innerHTML = '';
+  chapter.steps.forEach((step, i) => {
+    if (step.activity?.engine !== 'runner') return;
+    const b = document.createElement('button');
+    b.textContent = step.name;
+    // Same as replaying a part: the title then offers "Continue · <game>".
+    b.onclick = () => {
+      saveProgress(chapter.id, { ...loadProgress(chapter.id), resume: i, reached: Math.max(reached, i) });
+      location.reload();
+    };
+    games.appendChild(b);
+  });
   const list = $('#story-list');
   list.innerHTML = '';
   chapter.steps.forEach((step, i) => {
@@ -211,11 +226,41 @@ function renderStory() {
   });
 }
 
-// ---- Playtest session log (?debug or ?log; ?kid=A1 labels it) ---------------------------
+// ---- Play records (session log): Settings › Record play sessions, or ?log / ?debug -------
+// ?kid=A1 labels a session for a playtest sheet.
 const params = new URLSearchParams(location.search);
-const sessionLog = params.has('debug') || params.has('log')
-  ? startSessionLog(g, { kid: params.get('kid'), step: params.get('step') })
-  : null;
+const RECORD_KEY = 'astra.record';
+const recordSetting = () => { try { return localStorage.getItem(RECORD_KEY) === '1'; } catch { return false; } };
+let sessionLog = null;
+const startRecording = () => {
+  sessionLog ??= startSessionLog(g, { kid: params.get('kid'), step: params.get('step') });
+};
+if (params.has('debug') || params.has('log') || recordSetting()) startRecording();
+
+const refreshRecords = () => { $('#records-count').textContent = loadSessions().length; };
+$('#set-record').checked = !!sessionLog;
+$('#set-record').onchange = e => {
+  try { localStorage.setItem(RECORD_KEY, e.target.checked ? '1' : '0'); } catch { /* no storage */ }
+  if (e.target.checked) startRecording();
+  else if (sessionLog) {
+    sessionLog.save();
+    g.log = () => {}; // stop adding to this session
+    sessionLog = null;
+  }
+  refreshRecords();
+};
+$('#records-download').onclick = () => {
+  sessionLog?.save();
+  downloadSessions();
+};
+$('#records-clear').onclick = () => {
+  if (!confirm('Delete all play records on this computer? Download them first if you need them.')) return;
+  clearSessions();
+  sessionLog?.save(); // keep the one recording now
+  refreshRecords();
+};
+$('#btn-settings').addEventListener('click', refreshRecords);
+refreshRecords();
 
 // ---- Main loop -------------------------------------------------------------------
 const clock = new THREE.Clock();

@@ -1,13 +1,16 @@
-// Chapter 1 · the story moments inside the Star Stone Run (the Sky River stage).
-// Only the start, the bridges and the finish stop for dialogue; lines during the run are short
-// barks spoken over the action (see the runner's `text`).
+// Chapter 1 · the story moments inside the movement games (the Star Stone Run on the Sky River,
+// Sky Power above the clouds). Only the start, the bridges and the finish stop for dialogue;
+// lines during a run are short barks spoken over the action (see each runner's `text`).
 // Kept free of three.js so the headless tests can load the chapter's activities.
 
 import { sfx } from '../../core/audio.js';
 import { LINES } from './lines.js';
 
 const R = LINES.starStoneRun;
+const P = LINES.skyPower;
 const say = (g, [who, text, opts]) => g.ui.say(who, text, opts);
+
+// ---- Star Stone Run ------------------------------------------------------------------
 
 // Poppy lands on the river; Nutty floats away ahead on a stone, calling back.
 export async function starStoneStart(g, stage, { hero }) {
@@ -54,4 +57,24 @@ export async function starStoneEnd(g, stage, { hero }) {
 // Keep going (endless): Nutty waits off-stage while Poppy runs on.
 export function starStoneResume(g, stage) {
   stage.river.resetForRun();
+}
+
+// ---- Sky Power -------------------------------------------------------------------------
+
+// The dish lifts off through the clouds with Lumi and Poppy on it.
+export async function skyPowerStart(g, stage) {
+  const rise = stage.sky.liftOff(g);
+  for (const line of P.start) await say(g, line);
+  g.ui.hideDialogue();
+  await rise;
+}
+
+// The beam shoots across the sky to the gate.
+export async function skyPowerEnd(g, stage) {
+  stage.sky.cast.lumi.state = 'cheer';
+  stage.sky.cast.poppy.state = 'cheer';
+  const beam = stage.sky.beamToGate(g);
+  await say(g, P.fire);
+  await beam;
+  g.ui.hideDialogue();
 }

@@ -4,7 +4,7 @@
 // Units: distance along the track (the hero runs toward +distance), seconds, lanes -1 / 0 / 1.
 //
 //   const sim = createRunSim(config)
-//   sim.step(input)        one fixed step (STEP seconds). input = { zone, jump, duck, armsUp, tracking }
+//   sim.step(input)        one fixed step (STEP seconds). input = { zone, jump, duck, armsUp, lean, tracking }
 //                          (zone 'left' | 'center' | 'right'; jump true on the step it happens)
 //   sim.events             what happened since you last emptied it (telegraph, clear, hit, bun, ...)
 //   sim.clearAhead(2)      keep the next 2 s free of obstacles (after a pause or 3-2-1)
@@ -15,7 +15,7 @@
 // hero jumps right at it); a duck or arms-up held at any moment clears a branch or sunk stone.
 // Lane obstacles are judged at the moment the hero reaches them.
 
-import { PATTERNS, MOVE_OF, isObstacle } from './runner-patterns.js';
+import { PATTERNS, MOVE_OF, isObstacle, isCollectible } from './runner-patterns.js';
 
 export const STEP = 1 / 60;
 export const WINDOW_BEFORE = 1.0;
@@ -32,6 +32,12 @@ export const LANE_OF_ZONE = { left: -1, center: 0, right: 1 };
 export const LANE_TIME = { camera: { little: 1.5, big: 1.0 }, keyboard: { little: 0.3, big: 0.3 } };
 // Seconds between two obstacles, at minimum, just to see and react.
 export const REACTION = { little: 1.6, big: 1.1 };
+// Fly mode: seconds a child needs to go from low to high or back (arms up / down), and how long
+// arms must stay up (or down) before the height changes, so a flicker doesn't count.
+export const HEIGHT_TIME = { camera: { little: 1.0, big: 0.8 }, keyboard: { little: 0.3, big: 0.3 } };
+export const HEIGHT_HOLD = 0.15;
+const LEAN_TIME = 0.6; // seconds to see a gust and lean into it
+const RING = 5; // sparks a spark ring is worth
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -49,7 +55,8 @@ export function mulberry32(seed) {
 //   speed: { start, max }, legs: [leg, ...],
 //   patterns: extra pattern definitions, breatherEvery: seconds (0 = never),
 //   maxJumpsInRow (Little: 6), forceSpeed (tests: always this speed), adaptive: true,
-//   legSeconds (how long a leg lasts when it gives no length or seconds)
+//   legSeconds (how long a leg lasts when it gives no length or seconds),
+//   mode: 'fly' (two heights: arms up flies high, arms down low; legs may say heights: false)
 // }
 // A leg: { length (distance) or seconds (time at this age's speeds), theme, patterns: [names],
 //   tier (lowest pattern tier allowed from the start), teach: { lanes: [-1, 1], timeout } }. Patterns and numbers may differ by age:
@@ -62,6 +69,8 @@ export function createRunSim(config) {
   const patterns = { ...PATTERNS, ...config.patterns };
   const laneTime = LANE_TIME[play][age];
   const reaction = REACTION[age];
+  const fly = config.mode === 'fly';
+  const heightTime = HEIGHT_TIME[play][age];
   const byAge = v => (v && typeof v === 'object' && !Array.isArray(v) && ('little' in v || 'big' in v) ? v[age] : v);
   const avgSpeed = (config.speed.start + config.speed.max) / 2;
   const legs = config.legs.map(l => {
@@ -78,6 +87,8 @@ export function createRunSim(config) {
   const sim = {
     t: 0, dist: 0, speed: config.speed.start,
     lane: 0, laneX: 0, // target lane, and the hero's sliding position
+    fly, high: false, heightX: 0, // fly mode: flying high?, and the eased height (0 low, 1 high)
+    lean: null,
     jumpT: -1, pendingJump: null, duck: false, armsUp: false,
     stumbleT: 0, speedMul: 1, tier: 1,
     leg: 0, legStart: 0, endless: false, goalReached: false,
@@ -114,7 +125,7 @@ export function createRunSim(config) {
   let lastObstacle = null; // { D, kind, safe: [lanes] } the last obstacle placed
   let possibleLanes = [-1, 0, 1]; // where the hero can be after the last obstacle
   let jumpsInRow = 0;
-  let lastLaneItem = 0, lastWall = null;
+  let lastLaneItem = 0, lastWall = null, lastHeight = 0;
   let lure = null; // { D, lane } the last collectible: it may have drawn the child into its lane
 
   const pickLane = (spec, item) => {
@@ -128,12 +139,19 @@ export function createRunSim(config) {
   // Seconds needed between the previous obstacle and this one: react, then (for a lane
   // obstacle) walk from wherever the hero may be to the nearest free lane.
   const lanesTo = (from, safe) => Math.min(...safe.map(to => Math.abs(to - from)));
-  function neededGap(safe) {
+  // Fly mode: the height the last height obstacle left the child at (1 high, 0 low, null either),
+  // and the last spark line, which may have drawn them to its height.
+  let heightAfter = null, lureHeight = null;
+  function neededGap(safe, needHeight = null, gust = false) {
     if (!lastObstacle) return 0;
     let travel = 0;
     if (safe) for (const from of possibleLanes) travel = Math.max(travel, lanesTo(from, safe));
-    return Math.max(reaction, travel ? travel * laneTime + 0.5 : 0);
+    const climb = needHeight !== null && heightAfter !== null && heightAfter !== needHeight ? heightTime + 0.5 : 0;
+    return Math.max(reaction, travel ? travel * laneTime + 0.5 : 0, climb, gust ? reaction + LEAN_TIME : 0);
   }
+  // Heights are on in this leg (fly mode; a leg can say heights: false, e.g. for Little early on).
+  const heightsOn = i => fly && byAge(legDef(i).heights) !== false;
+  sim.heightsOn = () => heightsOn(sim.leg);
 
   function choosePattern(leg) {
     // A leg can open harder tiers from the start (leg.tier), so its new obstacles show up.
@@ -168,13 +186,22 @@ export function createRunSim(config) {
           lastWall = { blocked };
           lastLaneItem = open;
         }
+        const move = MOVE_OF[item.kind];
+        const needHeight = move === 'up' ? 1 : move === 'down' ? 0 : null;
         // At least the pattern's own gap, and at least what fairness needs.
         const want = (item.at ?? 0) * v;
-        const need = neededGap(safe) * v;
+        const need = neededGap(safe, needHeight, move === 'lean') * v;
         D = lastObstacle ? Math.max(D + want, lastObstacle.D + need) : D + want;
         // A bun line may have pulled the child sideways: give them time to walk back.
         if (safe && lure) D = Math.max(D, lure.D + (lanesTo(lure.lane, safe) * laneTime + 0.5) * v);
-        sim.objects.push({ id: ++objectId, kind: item.kind, move: MOVE_OF[item.kind], D, blocked, safe, judged: false, cleared: false, telegraphed: false, untracked: false, pattern: name });
+        // Sparks may have drawn them up or down: give them time to change height.
+        if (needHeight !== null && lureHeight && lureHeight.height !== needHeight) D = Math.max(D, lureHeight.D + (heightTime + 0.5) * v);
+        const dir = move === 'lean' ? (item.dir === 'left' || item.dir === 'right' ? item.dir : rng() < 0.5 ? 'left' : 'right') : null;
+        sim.objects.push({ id: ++objectId, kind: item.kind, move, dir, D, blocked, safe, judged: false, cleared: false, telegraphed: false, untracked: false, pattern: name });
+        if (needHeight !== null) {
+          heightAfter = needHeight;
+          lureHeight = null;
+        }
         lastObstacle = { D, safe };
         if (safe) {
           possibleLanes = safe;
@@ -185,11 +212,20 @@ export function createRunSim(config) {
         const lane = pickLane(item.lane, item);
         lastLaneItem = lane;
         D += (item.at ?? 0) * v;
+        // Fly mode: which height (only when this leg has heights; otherwise low).
+        let height = 0;
+        if (heightsOn(legAt(D))) {
+          if (item.height === 'high') height = 1;
+          else if (item.height === 'same') height = lastHeight;
+          else if (item.height === 'random') height = rng() < 0.5 ? 1 : 0;
+        }
+        lastHeight = height;
         for (let i = 0; i < count; i++) {
-          sim.objects.push({ id: ++objectId, kind: item.kind, lane, D: D + i * (item.every ?? 0.25) * v, arc: item.arc ? Math.sin(((i + 0.5) / count) * Math.PI) : 0, taken: false, passed: false });
+          sim.objects.push({ id: ++objectId, kind: item.kind, lane, height, D: D + i * (item.every ?? 0.25) * v, arc: item.arc ? Math.sin(((i + 0.5) / count) * Math.PI) : 0, taken: false, passed: false });
         }
         D += (count - 1) * (item.every ?? 0.25) * v;
         lure = { D, lane };
+        if (fly) lureHeight = { D, height };
         possibleLanes = [-1, 0, 1];
       }
     }
@@ -223,6 +259,7 @@ export function createRunSim(config) {
         genD = end + 2 * v;
         lastObstacle = null;
         lure = null;
+        heightAfter = lureHeight = null;
         possibleLanes = [-1, 0, 1];
         continue;
       }
@@ -251,6 +288,8 @@ export function createRunSim(config) {
     genD += shift;
     if (lastObstacle) lastObstacle.D += shift;
   };
+
+  let highHold = 0;
 
   sim.continueEndless = () => {
     sim.endless = true;
@@ -281,6 +320,19 @@ export function createRunSim(config) {
 
     sim.duck = !!input.duck;
     sim.armsUp = !!input.armsUp;
+    sim.lean = input.lean ?? null;
+
+    // Fly mode: arms up (held a moment) flies high, arms down flies low; eased over ~0.25 s.
+    if (fly) {
+      const wantHigh = sim.heightsOn() && sim.armsUp;
+      highHold = wantHigh !== sim.high ? highHold + dt : 0;
+      if (highHold >= HEIGHT_HOLD) {
+        sim.high = wantHigh;
+        highHold = 0;
+      }
+      sim.heightX += ((sim.high ? 1 : 0) - sim.heightX) * (1 - Math.exp(-dt / 0.08));
+    }
+    const heroHeight = sim.heightX > 0.5 ? 1 : 0;
     if (sim.jumpT >= 0) sim.jumpT += dt;
     if (sim.jumpT >= JUMP_TIME) sim.jumpT = -1;
 
@@ -312,17 +364,19 @@ export function createRunSim(config) {
         }
         continue;
       }
-      if (!isObstacle(o.kind)) {
-        // Collectibles: picked up when passed in the same lane.
+      if (isCollectible(o.kind)) {
+        // Collectibles: picked up when passed in the same lane (and at the same height, flying).
+        // Buns and sparks count the same; a spark ring is worth RING sparks.
         if (!o.passed && o.D <= sim.dist) {
           o.passed = true;
-          if (o.kind === 'bun') sim.stats.bunsSeen++;
-          if (o.lane === heroLane) {
+          const worth = o.kind === 'ring' ? RING : 1;
+          if (o.kind !== 'star') sim.stats.bunsSeen += worth;
+          if (o.lane === heroLane && (!fly || (o.height ?? 0) === heroHeight)) {
             o.taken = true;
-            if (o.kind === 'bun') sim.stats.buns++;
-            else sim.stats.stars++;
+            if (o.kind === 'star') sim.stats.stars++;
+            else sim.stats.buns += worth;
             sim.events.push({ type: o.kind, obj: o });
-            if (o.kind === 'bun') teachProgress(o.lane);
+            if (o.kind !== 'star') teachProgress(o.lane);
           }
         }
         continue;
@@ -336,6 +390,12 @@ export function createRunSim(config) {
       if (inWindow && !input.tracking) o.untracked = true;
       if (o.move === 'duck' && inWindow && sim.duck) o.cleared = true;
       if (o.move === 'armsUp' && inWindow && sim.armsUp) o.cleared = true;
+      if (o.move === 'lean' && inWindow && sim.lean === o.dir) o.cleared = true;
+      // Fly mode: be at the right height as you reach it (high over a rock, low under an arch).
+      if ((o.move === 'up' || o.move === 'down') && a <= 0) {
+        judge(o, heroHeight === (o.move === 'up' ? 1 : 0));
+        continue;
+      }
       if (o.move === 'lane' && a <= 0) {
         judge(o, !o.blocked.includes(heroLane));
         continue;
@@ -446,7 +506,9 @@ export function createRunSim(config) {
 export function createBot(sim, { age = 'little', play = 'camera', seed = 7 } = {}) {
   const rng = mulberry32(seed);
   const laneTime = LANE_TIME[play][age];
+  const heightTime = HEIGHT_TIME[play][age];
   let zoneLane = 0, moving = 0, moveLeft = 0;
+  let arms = false, armsTarget = false, armsIn = 0; // fly mode: arms up (high) or not
   const zoneName = l => (l < 0 ? 'left' : l > 0 ? 'right' : 'center');
   const jumped = new Set();
   return function input() {
@@ -455,10 +517,24 @@ export function createBot(sim, { age = 'little', play = 'camera', seed = 7 } = {
     // Where to be: the free lane of the next lane obstacle (nearest to where we are).
     let want = zoneLane;
     const lane = ahead.find(o => o.move === 'lane');
+    const goodie = o => o.kind === 'bun' || o.kind === 'spark' || o.kind === 'ring';
     if (lane) want = lane.safe.reduce((b, l) => (Math.abs(l - zoneLane) < Math.abs(b - zoneLane) ? l : b), lane.safe[0]);
     else {
-      const bun = ahead.find(o => o.kind === 'bun' && arrival(o) < 2.5);
+      const bun = ahead.find(o => goodie(o) && arrival(o) < 2.5);
       if (bun) want = bun.lane;
+    }
+    // Fly mode: decide on a height when the next rock or arch is announced (or for the next
+    // sparks), then take as long as a child does to get the arms there.
+    if (sim.fly) {
+      const climb = ahead.find(o => (o.move === 'up' || o.move === 'down') && arrival(o) <= TELEGRAPH);
+      const spark = ahead.find(o => goodie(o) && arrival(o) < 1.6 && o.lane === want);
+      const target = climb ? climb.move === 'up' : spark ? spark.height === 1 : armsTarget;
+      if (target !== armsTarget) {
+        armsTarget = target;
+        armsIn = heightTime * 0.8;
+      }
+      if (armsIn > 0) armsIn -= STEP;
+      else arms = armsTarget;
     }
     // A child crosses one lane every laneTime seconds.
     if (moving) {
@@ -479,6 +555,12 @@ export function createBot(sim, { age = 'little', play = 'camera', seed = 7 } = {
       jump = true;
     }
     const near = (move, from, to) => ahead.some(o => o.move === move && arrival(o) <= from && arrival(o) >= to);
-    return { zone: zoneName(zoneLane), jump, duck: near('duck', 0.6, -0.1), armsUp: near('armsUp', 0.8, 0), tracking: true };
+    const gust = ahead.find(o => o.move === 'lean' && arrival(o) <= 0.8 && arrival(o) >= -0.1);
+    return {
+      zone: zoneName(zoneLane), jump, duck: near('duck', 0.6, -0.1),
+      armsUp: sim.fly ? arms : near('armsUp', 0.8, 0),
+      lean: gust ? gust.dir : null,
+      tracking: true,
+    };
   };
 }

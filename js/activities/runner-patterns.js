@@ -11,14 +11,22 @@
 //          lane obstacle left open) | 'blocked' (the previous wall's blocked side)
 //   count, every   for a line of collectibles: how many, and seconds between them
 //   arc    collectibles rise over the obstacle before them (looks; collecting is by lane)
+//
+// Fly mode (runner `mode: 'fly'`) adds two heights, low and high:
+//   kind   'rock' (low crystal rock: fly high) | 'arch' (high crystal arch: fly low)
+//          'gust' (wind: lean the way it blows; `dir` 'left' | 'right' | 'random')
+//          'spark' (collectible, like a bun) | 'ring' (fly through it: 5 sparks)
+//   height for collectibles: 'low' | 'high' | 'random' | 'same' (only counts when heights are on)
 
 export const MOVE_OF = {
   block: 'lane', wall: 'lane',
   gap: 'jump', wobble: 'jump',
   high: 'duck',
   sunk: 'armsUp',
+  rock: 'up', arch: 'down', gust: 'lean',
 };
 export const isObstacle = kind => kind in MOVE_OF;
+export const isCollectible = kind => ['bun', 'spark', 'star', 'ring'].includes(kind);
 
 export const PATTERNS = {
   'bun-line': { tier: 1, items: [{ kind: 'bun', lane: 'random', count: 5, every: 0.25 }] },
@@ -36,4 +44,18 @@ export const PATTERNS = {
   'wall-jump': { tier: 3, items: [{ kind: 'wall', lane: 'random' }, { kind: 'gap', at: 1 }] },
   'branch-wobble': { tier: 3, items: [{ kind: 'high' }, { kind: 'wobble', at: 1 }] },
   zigzag: { tier: 3, items: [{ kind: 'block', lane: -1 }, { kind: 'block', at: 1, lane: 1 }, { kind: 'block', at: 1, lane: 0 }] },
+
+  // ---- Fly mode (Sky Power) ----------------------------------------------------------
+  'spark-line': { tier: 1, items: [{ kind: 'spark', lane: 'random', height: 'random', count: 5, every: 0.25 }] },
+  storm: { tier: 1, items: [{ kind: 'block', lane: 'random' }] },
+  'storm-sparks': { tier: 1, items: [{ kind: 'block', lane: 'random' }, { kind: 'spark', at: 0.2, lane: 'free', height: 'random', count: 4, every: 0.25 }] },
+  ring: { tier: 1, items: [{ kind: 'ring', lane: 'random', height: 'random' }] },
+  'storm-ring': { tier: 1, items: [{ kind: 'block', lane: 'random' }, { kind: 'ring', at: 0.4, lane: 'free', height: 'random' }] },
+  'storm-wall': { tier: 2, items: [{ kind: 'wall', lane: 'random' }, { kind: 'spark', at: 0.3, lane: 'same', height: 'random', count: 3, every: 0.25 }] },
+  'rock-low': { tier: 1, items: [{ kind: 'rock' }, { kind: 'spark', at: 0.1, lane: 'random', height: 'high', count: 3, every: 0.2 }] },
+  'arch-high': { tier: 1, items: [{ kind: 'arch' }, { kind: 'spark', at: 0.1, lane: 'random', height: 'low', count: 3, every: 0.2 }] },
+  'hi-lo': { tier: 2, items: [{ kind: 'rock' }, { kind: 'arch', at: 1.4 }] },
+  'ring-chain': { tier: 2, items: [{ kind: 'ring', lane: -1, height: 'low' }, { kind: 'ring', at: 0.9, lane: 0, height: 'high' }, { kind: 'ring', at: 0.9, lane: 1, height: 'low' }] },
+  gust: { tier: 2, items: [{ kind: 'gust', dir: 'random' }] },
+  'gust-sparks': { tier: 3, items: [{ kind: 'gust', dir: 'random' }, { kind: 'spark', at: 0.4, lane: 'random', height: 'random', count: 4, every: 0.25 }] },
 };

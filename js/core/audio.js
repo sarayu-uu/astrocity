@@ -113,6 +113,8 @@ let timer = null;
 const STAGE_MUSIC = {
   // The Sky River: a bright, bouncy loop on a pentatonic scale, about 112 beats a minute.
   'sky-river': { beat: 60 / 112, bass: [48, 48, 45, 43], notes: [72, 74, 76, 79, 81, 84, 86] },
+  // Above the clouds: slower and dreamier, with a lift.
+  'sky-above': { beat: 60 / 96, bass: [50, 47, 43, 45], notes: [74, 76, 79, 81, 83, 86, 88] },
 };
 let stageTimer = null;
 let stageBus = null;

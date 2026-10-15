@@ -117,7 +117,11 @@ export function smoothed(apply, rate = 5) {
       apply(shown, info);
     }
   };
+  // Only while its set piece plays (set-piece.js turns it off after), so two set pieces that
+  // move the same thing (Sky Power's antenna) never fight over it.
+  fn.live = true;
   fn.update = dt => {
+    if (!fn.live) return;
     shown += (target - shown) * (1 - Math.exp(-rate * dt));
     if (Math.abs(target - shown) < 1e-4) shown = target;
     apply(shown, info);

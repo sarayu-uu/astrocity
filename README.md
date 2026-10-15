@@ -10,25 +10,24 @@ python -m http.server 8000
 
 Open http://localhost:8000. You need to serve the folder because the camera only works on `localhost` or HTTPS. The first load needs internet for three.js, the fonts and the pose model.
 
-## The chapter (~15 minutes)
+## The chapter (~20 minutes)
 
-Chapter 1 is a list of steps in [js/chapters/ch01-first-starway/chapter.js](js/chapters/ch01-first-starway/chapter.js). Story scenes and movement activities take turns:
+Chapter 1 is a list of steps in [js/chapters/ch01-first-starway/chapter.js](js/chapters/ch01-first-starway/chapter.js). Story scenes and movement games take turns:
 
 | # | Step | Type | Movement |
 |---|---|---|---|
 | 1 | Poppy finds a stone | scene | |
 | 2 | Where is Nutty? | explore (click friends) | |
 | 3 | The old bridge | scene | |
-| 4 | Cross the stones | activity · `hop-stones` | jump, both arms up |
+| 4 | Star Stone Run | game · `runner` on the Sky River, 3 bridges | step, jump, duck, arms up, poses |
 | 5 | The big potato | scene | |
-| 6 | Aim the dish | activity · `side-step` | step left / right |
-| 7 | Turn the Sky Crank | activity · `arm-pump` | arms up, then down |
-| 8 | The gate wakes up | scene | |
-| 9 | Copy the poses | activity · `pose-match` | star, bridge, moon |
-| 10 | The Starway comes back | scene | |
-| 11 | Play in Star Square | free play | |
+| 6 | Sky Power | game · `runner` fly mode above the clouds, 3 moments | step, arms up / down, pumps, star, lean (Big) |
+| 7 | The gate wakes up | scene | |
+| 8 | Copy the poses | activity · `pose-match` | star, bridge, moon |
+| 9 | The Starway comes back | scene | |
+| 10 | Play in Star Square | free play | |
 
-There are no scores, stars or fail states. A mistimed jump only makes Poppy wobble. If the child steps out of view, the adventure pauses until they come back.
+The games have stars, a score and a best score, but no fail states: a missed obstacle is a stumble and the run goes on. If the child steps out of view, play pauses until they come back. The original island activities (Cross the Stones, Aim the Dish, Turn the Sky Crank) are still in `activities.js` and can be put back in `chapter.js`.
 
 **Story controls (every chapter gets these):**
 
@@ -73,6 +72,7 @@ js/world/
   buddies.js               the five plush characters and their animation states
 js/stages/                 activity stage worlds
   sky-river.js             the Star Stone Run: river canyon, stone lanes, obstacle looks, three bridges
+  sky-above.js             Sky Power: the sky above the clouds, Lumi's flying dish, three moments
   test-stage.js, test-track.js   plain stages for ?debug tests
 js/activities/             reusable movement engines (no story text inside)
   hop-stones.js            jump across drifting stones, lift a sunken one
@@ -109,11 +109,13 @@ The **Stages** folder in the `?debug` panel enters and leaves a test stage, and 
 
 Each leg of the test run ends in a set piece, together using every step type (jump, arms-up hold, step left / right, pumps, pose hold). `node tools/test-set-piece.mjs` plays each step type and checks the rules: nothing finishes without the move, a held move can't carry into the next step, and help comes after 12 s and 25 s without progress. `node tools/test-golden.mjs` plays scripted input through the four original engines and compares every frame with `tools/golden/old-engines.json`, so a change to shared move code that alters them shows up (`--update` saves new results on purpose).
 
-**Playtest session log:** add `&log` (records quietly) or `?debug` to the address, and `&kid=A1` to label the child, e.g. `?step=stone-run&log&kid=A1`. Every page load is one session, saved on that computer: per leg time, stumbles by obstacle, each bridge step's time and the hints shown, tracking drops and pauses, frame rates, and the result. **Shift + L** downloads every saved session as JSON (also `?debug` › Session log, which can clear them). No camera picture or body landmarks are saved. Code: `js/core/session-log.js`; anything can add an event with `g.log(type, data)`.
+**In the app:** the Story panel's **Play a game** buttons start any movement game straight away (the title then offers *Continue*). **Settings › Play records** turns on the session log below and downloads or clears the records.
+
+**Playtest session log:** on with Settings › Record play sessions, or add `&log` (records quietly) or `?debug` to the address; `&kid=A1` labels the child, e.g. `?step=stone-run&log&kid=A1`. Every page load is one session, saved on that computer: per leg time, stumbles by obstacle, each bridge step's time and the hints shown, tracking drops and pauses, frame rates, and the result. **Shift + L** downloads every saved session as JSON (also `?debug` › Session log, which can clear them). No camera picture or body landmarks are saved. Code: `js/core/session-log.js`; anything can add an event with `g.log(type, data)`.
 
 **Jump to a step:** add `?step=<id>` to the address (ids in `chapter.js`), e.g. `?step=stone-run` for the Star Stone Run, or `?debug&step=stone-run` to have the debug panel too. Earlier steps are fast-forwarded, so the world is set up right.
 
-`node tools/test-stone-run.mjs` plays the Star Stone Run's real config for Little and Big (runner and bridges) and reports each leg's time and the whole game's length, for a perfect player and a slower child.
+`node tools/test-games.mjs` plays Chapter 1's movement games (Star Stone Run, Sky Power) with their real config for Little and Big, and reports each leg's time and each game's length, for a perfect player and a slower child (`--game skyPower` for one game, `--legSeconds 95` to try a longer leg time).
 
 To check a recording without a browser, run `node tools/replay-moves.mjs recording.json`. It prints when each move starts and stops. You can override a threshold, for example `--duckDrop 0.2`.
 

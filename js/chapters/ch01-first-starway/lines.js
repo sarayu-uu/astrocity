@@ -106,6 +106,46 @@ export const LINES = {
     askHelp: ['lumi', 'First, my dish must point at the gate. Can you help?', { choices: ['Help Lumi'] }],
   },
 
+  // Sky Power (Lumi's dish flies above the clouds). `auto` lines move on by themselves.
+  skyPower: {
+    goal: 'Catch sparks for the Sky Crank!',
+    start: [
+      ['lumi', 'My dish can fly! Hold on, Poppy!', { auto: 3 }],
+      ['poppy', 'Wheee! We are flying!', { auto: 2.6 }],
+      ['lumi', 'Catch the sparks. They power my Sky Crank!', { auto: 3.2 }],
+    ],
+    teach: { title: 'Step left and right to catch the sparks!', camera: 'Move your whole body.', keys: 'Hold ← or →.' },
+    teachDone: 'Zap! Now we fly!',
+    heights: { title: 'Arms up: fly high. Arms down: fly low.', camera: 'Reach up to go up. Arms down to go down.', keys: 'Hold W or ↑ to fly high.' },
+    legs: { sunset: 'Arms up to fly high! Arms down to fly low!', stars: 'Look! The stars are out!' },
+    hit: ['Whoa! Hold on!', 'Bumpy! Keep going!', 'Oops! We are OK!', 'Wobble! Steady!'],
+    findSignal: {
+      intro: [['lumi', 'My dish must find the gate. Step to sweep the sky!', { auto: 3.2 }]],
+      step: 'Step to the {side}! Sweep the dish!',
+      found: 'There is the gate!',
+    },
+    crankJam: {
+      intro: [['lumi', 'Oh no! A gear popped out!', { auto: 2.6 }]],
+      pump: 'Arms up, then down! Turn the crank!',
+      fixed: 'Click! Fixed it!',
+    },
+    fullPower: {
+      intro: [['lumi', 'Almost full! Pump, pump, pump!', { auto: 2.6 }]],
+      pump: 'Quick! Arms up and down!',
+      star: 'Make a big star to fire the beam!',
+      done: 'Here it goes!',
+    },
+    cheers: ['The gate is over there!', 'The crank works!', 'FULL POWER!'],
+    // Extra steps, ready in activities.js if the game needs to be longer.
+    extra: {
+      lock: 'Arms up! Hold the dish steady!',
+      hold: 'Arms up! Hold the gear in!',
+      boost: 'More! Arms up and down!',
+    },
+    fire: ['lumi', 'FULL POWER! Point the beam at the gate!', { auto: 3.5 }],
+    result: 'Full power!',
+  },
+
   beam: {
     pictures: ['poppy', 'The gate has pictures. They look like poses!'],
     copy: ['mimi', 'Poses? I love poses! Copy the pictures, darlings!'],

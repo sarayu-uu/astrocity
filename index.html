@@ -92,6 +92,7 @@
     <div id="run-progress"><i id="run-fill"></i></div>
     <div id="run-pill"><span class="bun" aria-hidden="true"></span><strong id="run-count">0</strong><span id="run-stars"></span></div>
     <button id="run-stop">Stop</button>
+    <div id="run-meter" hidden aria-label="Charge"><i id="run-meter-fill"></i><span aria-hidden="true">⚡</span></div>
   </div>
   <div id="cue" hidden aria-hidden="true"></div>
   <div id="breather" hidden><strong>Shake out your arms!</strong><span>Big breath in, and out.</span></div>
@@ -140,11 +141,22 @@
       <label><input type="radio" name="age" value="big"> Big (7–12)</label>
     </fieldset>
     <p class="fine">Little explorers get slower stones, shorter holds and fewer steps.</p>
+    <fieldset class="row records">
+      <legend>Play records</legend>
+      <label class="row-inline"><input type="checkbox" id="set-record"> Record play sessions</label>
+      <div class="record-actions">
+        <button id="records-download">Download (<span id="records-count">0</span>)</button>
+        <button id="records-clear" class="ghost">Clear</button>
+      </div>
+    </fieldset>
+    <p class="fine">Saves how each game went on this computer (times, stumbles, hints), to share with the team. No camera pictures are saved.</p>
   </div>
 
   <div id="story" class="sheet" hidden>
     <header><h2>Story</h2><button data-close aria-label="Close">✕</button></header>
     <p class="fine" id="story-chapter"></p>
+    <p class="fine">Play a game:</p>
+    <div id="story-games"></div>
     <ol id="story-list"></ol>
     <p class="fine">Pick a part to play it again.</p>
   </div>

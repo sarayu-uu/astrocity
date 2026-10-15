@@ -15,6 +15,7 @@ import { LINES } from './lines.js';
 import * as S from './run-scenes.js';
 
 const R = LINES.starStoneRun;
+const P = LINES.skyPower;
 
 export const ACTIVITIES = {
   // Star Stone Run: a runner game down the Sky River (replaces Cross the Stones in chapter.js).
@@ -90,6 +91,76 @@ export const ACTIVITIES = {
       bridge.drift = g.settings.age === 'big' ? 1.25 : 0.55;
       bridge.highlight(-1, false);
       g.B.poppy.place(bridge.landing.x, bridge.landing.z, bridge.landing.y);
+    },
+  },
+
+  // Sky Power: Lumi's dish flies above the clouds (replaces Aim the Dish and Turn the Sky Crank).
+  // Fly mode: step for lanes, arms up / down for two heights; Big also leans into gusts.
+  // Same length knobs as the Star Stone Run (tune.all.legSeconds, spare steps below).
+  skyPower: {
+    id: 'ch01.sky-power',
+    label: 'Chapter 1 · Sky Power',
+    engine: 'runner',
+    mode: 'fly',
+    stage: 'sky-above',
+    hero: 'lumi',
+    place: ['Above the Clouds', "Lumi's flying dish"],
+    goal: P.goal,
+    meter: { fullAt: 100 }, // sparks for a full charge meter
+    legs: [
+      { teach: { lanes: [-1, 1], timeout: 40 }, theme: 'gold', heights: false, patterns: ['spark-line'], coach: P.teach, doneBark: P.teachDone },
+      {
+        theme: 'gold', setPiece: 'findSignal', heights: { little: false, big: true },
+        patterns: { little: ['spark-line', 'storm', 'storm-sparks', 'ring', 'storm-ring'], big: ['spark-line', 'storm', 'storm-sparks', 'storm-ring', 'rock-low', 'arch-high'] },
+      },
+      {
+        theme: 'sunset', tier: 2, setPiece: 'crankJam', bark: P.legs.sunset, coach: P.heights, coachFigure: 'up', coachFor: 8,
+        patterns: { little: ['spark-line', 'rock-low', 'arch-high', 'storm-ring', 'ring'], big: ['rock-low', 'arch-high', 'hi-lo', 'storm-wall', 'ring-chain', 'storm-ring'] },
+      },
+      {
+        theme: 'stars', tier: 3, setPiece: 'fullPower', bark: P.legs.stars,
+        // Big leans into wind gusts; Little gets more lane changes instead.
+        patterns: { little: ['rock-low', 'arch-high', 'storm-wall', 'ring-chain', 'storm-sparks', 'hi-lo'], big: ['hi-lo', 'gust', 'gust-sparks', 'storm-wall', 'ring-chain', 'rock-low', 'arch-high'] },
+      },
+    ],
+    setPieces: {
+      findSignal: {
+        scene: 'findSignal', helper: 'lumi', intro: P.findSignal.intro, cheer: P.cheers[0],
+        steps: [
+          // The last side is where the gate is (right), as in the old Aim the Dish.
+          { move: 'step', sequence: { little: ['left', 'right'], big: ['left', 'right', 'left', 'right'] }, hold: 0.6, text: P.findSignal.step, does: 'sweep', done: P.findSignal.found },
+          // { move: 'armsUp', hold: 1, text: P.extra.lock, does: 'lock' },
+        ],
+      },
+      crankJam: {
+        scene: 'crankJam', helper: 'lumi', intro: P.crankJam.intro, cheer: P.cheers[1],
+        steps: [
+          { move: 'pump', times: { little: 5, big: 8 }, text: P.crankJam.pump, does: 'crank', done: P.crankJam.fixed },
+          // { move: 'armsUp', hold: 1.2, text: P.extra.hold, does: 'hold' },
+        ],
+      },
+      fullPower: {
+        scene: 'fullPower', helper: 'lumi', intro: P.fullPower.intro, cheer: P.cheers[2],
+        steps: [
+          { move: 'pump', times: 6, text: P.fullPower.pump, does: 'charge' },
+          // { move: 'pump', times: { little: 3, big: 5 }, text: P.extra.boost, does: 'boost' },
+          { move: 'pose', sequence: ['star'], hold: 1, text: P.fullPower.star, does: 'fire', done: P.fullPower.done },
+        ],
+      },
+    },
+    beats: { start: S.skyPowerStart, end: S.skyPowerEnd },
+    tune: {
+      all: { legSeconds: 80 },
+      little: { speed: { start: 7.5, max: 11 }, breatherEvery: 180 },
+      big: { speed: { start: 10, max: 16 }, breatherEvery: 240 },
+    },
+    text: { hit: P.hit, goal: P.result, collect: 'Sparks' },
+    // The island after this game (also for Skip and Continue): the dish points at the gate and
+    // the crank is full, exactly as Aim the Dish and Turn the Sky Crank left it.
+    islandEnd(g) {
+      g.W.crank.turnDish(0);
+      g.W.crank.setCharge(1);
+      g.B.lumi.state = 'work';
     },
   },
 
