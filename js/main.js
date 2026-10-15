@@ -30,8 +30,9 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92;
+// Neutral keeps the pastels bright; ACES darkened and desaturated them.
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 0.95;
 
 const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -66,7 +67,12 @@ function setLowQuality(on) {
 const aoReady = import('n8ao').then(({ N8AOPass }) => {
   ao = new N8AOPass(scene, camera, innerWidth, innerHeight);
   // gammaCorrection off: the OutputPass at the end already converts colours for the screen.
-  Object.assign(ao.configuration, { aoRadius: 2, distanceFalloff: 1, intensity: 2.5, halfRes: true, gammaCorrection: false });
+  // transparencyAware keeps the see-through clouds from turning grey; lavender instead of black
+  // keeps the shading soft.
+  Object.assign(ao.configuration, {
+    aoRadius: 2, distanceFalloff: 1, intensity: 1.6, halfRes: true, gammaCorrection: false,
+    transparencyAware: true, color: new THREE.Color('#4a3a6e'),
+  });
   composer.insertPass(ao, 1);
   composer.setSize(innerWidth, innerHeight);
   setLowQuality(lowQuality);

@@ -18,7 +18,7 @@ const rr = (a, b) => a + R() * (b - a);
 
 // Toon shading: three flat bands of light, so rocks, grass and props share one cartoon look.
 // The plush buddies, water and glowing pieces keep their own materials.
-const gradientMap = new THREE.DataTexture(new Uint8Array([80, 170, 255]), 3, 1, THREE.RedFormat);
+const gradientMap = new THREE.DataTexture(new Uint8Array([150, 210, 255]), 3, 1, THREE.RedFormat);
 gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
 gradientMap.needsUpdate = true;
 
@@ -345,7 +345,8 @@ export function buildWorld(scene) {
   scene.add(sky);
   scene.fog = new THREE.Fog('#bcd6ef', 260, 900);
 
-  const hemi = new THREE.HemisphereLight('#cfe4ff', '#7d7398', 0.6);
+  // Toon materials ignore scene.environment, so the hemisphere light does the soft fill.
+  const hemi = new THREE.HemisphereLight('#e8f1ff', '#b9a6dd', 1.15);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight('#ffd7a0', 2.4);
   sun.position.set(30, 45, 25);
@@ -355,10 +356,11 @@ export function buildWorld(scene) {
   Object.assign(sun.shadow.camera, { left: -42, right: 42, top: 42, bottom: -42, near: 1, far: 160 });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
+  sun.shadow.intensity = 0.55;
   scene.add(sun, sun.target);
 
   // Far below: a deep blue sea under a floor of clouds.
-  scene.add(mesh(new THREE.PlaneGeometry(2000, 2000), mat('#1d58a8', { roughness: 0.4 }), { pos: [0, -90, 0], rot: [-Math.PI / 2, 0, 0], cast: false }));
+  scene.add(mesh(new THREE.PlaneGeometry(2000, 2000), mat('#8cbbe8', { roughness: 0.4 }), { pos: [0, -90, 0], rot: [-Math.PI / 2, 0, 0], cast: false }));
   for (let i = 0; i < 70; i++) {
     const a = rr(0, Math.PI * 2), d = rr(20, 220);
     scene.add(cloud(Math.cos(a) * d, rr(-60, -38), Math.sin(a) * d, rr(40, 80), 0.9));
