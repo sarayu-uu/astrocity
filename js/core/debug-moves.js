@@ -10,7 +10,7 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
   const panel = document.createElement('div');
   panel.id = 'moves';
   panel.innerHTML = `
-    <header><strong>Moves</strong><span id="mv-mode"></span></header>
+    <header><strong>Moves</strong><span id="mv-mode"></span><button id="mv-size" title="Make the panel smaller (\`)"></button></header>
     <canvas id="mv-cam" width="320" height="240"></canvas>
     <ul id="mv-list"></ul>
     <div class="mv-buttons">
@@ -37,6 +37,23 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
     cells[row].querySelector('.mv-val').textContent = text;
   };
   const status = text => { $('#mv-status').textContent = text; };
+
+  // Panel size, so it doesn't hide the game: full → small camera only → title bar only.
+  // The header button or the ` key cycles it; the choice is remembered.
+  const SIZES = ['full', 'mini', 'closed'];
+  let size = 'full';
+  try { size = localStorage.getItem('astra.debug.movesSize') || 'full'; } catch {}
+  const setSize = s => {
+    size = SIZES.includes(s) ? s : 'full';
+    panel.dataset.size = size;
+    $('#mv-size').textContent = { full: '–', mini: '▁', closed: '+' }[size];
+    try { localStorage.setItem('astra.debug.movesSize', size); } catch {}
+  };
+  setSize(size);
+  $('#mv-size').onclick = () => setSize(SIZES[(SIZES.indexOf(size) + 1) % SIZES.length]);
+  addEventListener('keydown', e => {
+    if (e.code === 'Backquote' && !e.target.closest?.('input, textarea')) $('#mv-size').click();
+  });
 
   // Buttons.
   panel.querySelector('[data-act=camera]').onclick = async () => {
