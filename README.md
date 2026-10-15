@@ -48,7 +48,10 @@ Skip and replay work by fast-forwarding the earlier steps behind a curtain, so t
 |---|---|
 | Space | Jump |
 | W / ↑ | Arms up (hold to lift, tap to crank) |
-| ← / A, → / D | Step left / right |
+| ← / → | Step left / right |
+| S / ↓ | Duck |
+| A / D | Lean left / right |
+| (no key) | Freeze |
 | 1 / 2 / 3 | Star / bridge / moon pose |
 | Enter / R | Keep going / play again (after an activity) |
 
@@ -59,7 +62,8 @@ js/main.js                 boot: renderer, main loop, picking, panels
 js/core/                   shared systems, not tied to any chapter
   game.js                  the game context `g`: frame / wait / tween, skipping, camera setup
   director.js              plays a chapter's steps: skip, continue, replay, play again
-  input.js                 webcam + MediaPipe Pose -> jump, arms, poses, left/middle/right zone
+  input.js                 webcam + MediaPipe Pose -> jump, arms, poses, zone, duck, lean, freeze
+  debug-moves.js           the ?debug Moves panel: live lights, threshold sliders, record / replay
   ui.js                    dialogue, barks, coach, title, skip, done card, arrows
   camera.js                cinematic moves, follow shots, explore controls
   audio.js                 synthesized music and sound effects
@@ -80,6 +84,15 @@ js/chapters/
     lines.js               every line of dialogue, in simple English
     activities.js          each activity: label, engine, difficulty, text, world object
 ```
+
+### Testing moves
+
+Open the game with `?debug` on the end of the address to get the **Moves** panel:
+- live lights for every move, and sliders for the duck, lean and freeze thresholds;
+- **Record 10 s**, which saves the camera's body landmarks (not video) as a JSON file;
+- **Replay…**, which feeds a saved recording back through the same detection.
+
+To check a recording without a browser, run `node tools/replay-moves.mjs recording.json`. It prints when each move starts and stops. You can override a threshold, for example `--duckDrop 0.2`.
 
 ### Editing
 

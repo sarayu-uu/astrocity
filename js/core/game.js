@@ -80,10 +80,14 @@ export function createGame({ scene, camera, W, B, input, ui, rig }) {
         }
       }
       ui.hideSetup();
+      // While the child stands in view for 1.5 s, the input captures their standing baseline
+      // (for duck) and the camera's noise level (for freeze). Losing them restarts it.
       ui.coach('stand', 'Step back so Poppy can see you', 'Head to knees. Leave room to jump.');
+      input.beginCalibration();
       let seen = 0;
-      while (seen < 1.5) {
+      while (seen < 1.5 || input.calibrating) {
         await g.frame();
+        if (!input.tracking && seen > 0) input.beginCalibration();
         seen = input.tracking ? seen + g.dt : 0;
         ui.setCoachProgress(seen / 1.5);
       }

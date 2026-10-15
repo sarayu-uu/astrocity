@@ -226,6 +226,7 @@ function frame() {
 
   // While a scene fast-forwards the curtain hides the screen, so don't spend time drawing.
   if (!g.skipping) composer.render();
+  debugTick?.(realDt);
 
   if (!paused) g.tick(dt);
   requestAnimationFrame(frame);
@@ -233,22 +234,27 @@ function frame() {
 
 window.astra = g; // handy for poking at the world from the dev console
 
-// ?debug in the URL: live sliders for the look of the world.
+// ?debug in the URL: live sliders for the look of the world, and the Moves panel for testing
+// body tracking (js/core/debug-moves.js).
+let debugTick = null;
 if (new URLSearchParams(location.search).has('debug')) {
-  aoReady.then(() => import('three/addons/libs/lil-gui.module.min.js')).then(({ default: GUI }) => {
-    const gui = new GUI({ title: 'Look' });
-    const look = { toon: false };
-    gui.add(look, 'toon').name('Toon shading').onChange(on => W.setToon(on));
-    gui.add(scene.fog, 'near', 0, 1000, 10).name('Fog near');
-    gui.add(scene.fog, 'far', 100, 1400, 10).name('Fog far');
+  aoReady.then(() => import('three/addons/libs/lil-gui.module.min.js')).then(async ({ default: GUI }) => {
+    const gui = new GUI({ title: 'Debug' });
+    const lookF = gui.addFolder('Look');
+    lookF.add({ toon: false }, 'toon').name('Toon shading').onChange(on => W.setToon(on));
+    lookF.add(scene.fog, 'near', 0, 1000, 10).name('Fog near');
+    lookF.add(scene.fog, 'far', 100, 1400, 10).name('Fog far');
     if (ao) {
-      gui.add(ao, 'enabled').name('AO').onChange(on => { renderPass.enabled = !on; });
-      gui.add(ao.configuration, 'intensity', 0.5, 6, 0.1).name('AO intensity'); // N8AO glitches at 0
-      gui.add(ao.configuration, 'aoRadius', 0.2, 6, 0.1).name('AO radius');
-      gui.add(ao.configuration, 'halfRes').name('AO half resolution');
-      gui.add({ view: 'Combined' }, 'view', ['Combined', 'AO', 'No AO', 'Split']).name('AO view')
+      lookF.add(ao, 'enabled').name('AO').onChange(on => { renderPass.enabled = !on; });
+      lookF.add(ao.configuration, 'intensity', 0.5, 6, 0.1).name('AO intensity'); // N8AO glitches at 0
+      lookF.add(ao.configuration, 'aoRadius', 0.2, 6, 0.1).name('AO radius');
+      lookF.add(ao.configuration, 'halfRes').name('AO half resolution');
+      lookF.add({ view: 'Combined' }, 'view', ['Combined', 'AO', 'No AO', 'Split']).name('AO view')
         .onChange(mode => ao.setDisplayMode(mode));
     }
+    lookF.close();
+    const { createMovesPanel } = await import('./core/debug-moves.js');
+    debugTick = createMovesPanel(input, gui, { age: () => g.settings.age });
   });
 }
 

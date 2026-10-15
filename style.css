@@ -493,3 +493,32 @@ body:not(.cinematic) #btn-skip { top: 76px; }
   #coach { bottom: 16px; }
   #dialogue { bottom: calc(9vh + 12px); }
 }
+
+/* ---- ?debug Moves panel --------------------------------------------------------- */
+#moves {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 30;
+  width: 340px;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(16, 20, 40, 0.88);
+  font: 600 13px/1.3 var(--body);
+}
+#moves header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+#mv-mode { color: var(--muted); }
+#mv-cam { display: block; width: 100%; border-radius: 8px; background: #0b0e1d; }
+#mv-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 2px; }
+#mv-list li { display: grid; grid-template-columns: 12px 70px 1fr; align-items: center; gap: 8px; }
+#mv-list i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); }
+#mv-list li.on i { background: var(--sun); box-shadow: 0 0 8px var(--sun); }
+#mv-list li.on .mv-name { color: var(--sun); }
+.mv-val { color: var(--muted); font-variant-numeric: tabular-nums; }
+.mv-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.mv-buttons button, .mv-file { padding: 5px 9px; border-radius: 8px; background: rgba(255, 255, 255, 0.12); cursor: pointer; }
+.mv-buttons button:hover, .mv-file:hover { background: rgba(255, 255, 255, 0.22); }
+#mv-status { margin: 8px 0 0; min-height: 1.3em; color: var(--muted); }
+
