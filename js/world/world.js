@@ -16,10 +16,29 @@ function rng(seed) {
 const R = rng(7);
 const rr = (a, b) => a + R() * (b - a);
 
+// Toon shading: three flat bands of light, so rocks, grass and props share one cartoon look.
+// The plush buddies, water and glowing pieces keep their own materials.
+const gradientMap = new THREE.DataTexture(new Uint8Array([80, 170, 255]), 3, 1, THREE.RedFormat);
+gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
+gradientMap.needsUpdate = true;
+
+// Every toon material keeps a standard twin (and the other way round), so the ?debug panel can
+// switch between the two looks.
+const twins = new Map();
+function toon(params) {
+  const { roughness, metalness, flatShading, ...rest } = params;
+  const t = new THREE.MeshToonMaterial({ ...rest, gradientMap });
+  t.flatShading = !!flatShading;
+  const standard = new THREE.MeshStandardMaterial(params);
+  twins.set(t, standard);
+  twins.set(standard, t);
+  return t;
+}
+
 const matCache = new Map();
 function mat(color, o = {}) {
   const key = color + JSON.stringify(o);
-  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.9, ...o }));
+  if (!matCache.has(key)) matCache.set(key, toon({ color, roughness: 0.9, ...o }));
   return matCache.get(key);
 }
 
@@ -76,7 +95,7 @@ const grassTex = canvasTex(256, 256, (g, w, h) => {
 function island({ x = 0, y = 0, z = 0, r = 10, depth = 14, seed = 1, top = null, rock = ['#b07a4c', '#9a7cb4', '#6a5a96'] }) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
-  const topMat = top ? mat(top) : new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 });
+  const topMat = top ? mat(top) : toon({ map: grassTex, roughness: 1 });
   g.add(mesh(new THREE.CylinderGeometry(r, r * 0.98, 1, 72), topMat, { pos: [0, -0.5, 0], cast: false }));
   g.add(mesh(new THREE.TorusGeometry(r - 0.05, 0.38, 10, 72), mat(top || '#6cb24b'), { pos: [0, -0.32, 0], rot: [Math.PI / 2, 0, 0], cast: false }));
   g.add(mesh(new THREE.CylinderGeometry(r * 0.99, r * 0.95, 1.1, 48), mat('#8f6440'), { pos: [0, -1.4, 0] }));
@@ -104,11 +123,11 @@ function island({ x = 0, y = 0, z = 0, r = 10, depth = 14, seed = 1, top = null,
   }
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geo.computeVertexNormals();
-  g.add(mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }), { pos: [0, -1.9, 0] }));
+  g.add(mesh(geo, toon({ vertexColors: true, flatShading: true, roughness: 1 }), { pos: [0, -1.9, 0] }));
   for (let i = 0; i < 5; i++) {
     const a = rr(0, Math.PI * 2);
     const d = rr(0.3, 0.7) * r;
-    g.add(mesh(lumpy(rr(0.5, 1.2), 1, 0.2, i), new THREE.MeshStandardMaterial({ color: rock[2], flatShading: true }),
+    g.add(mesh(lumpy(rr(0.5, 1.2), 1, 0.2, i), toon({ color: rock[2], flatShading: true }),
       { pos: [Math.cos(a) * d, -depth * rr(0.55, 0.9) - 2, Math.sin(a) * d] }));
   }
   return g;
@@ -324,7 +343,7 @@ export function buildWorld(scene) {
       c = mix(c, vec3(0.55,0.72,0.92), smoothstep(0.0, -0.4, h)); gl_FragColor = vec4(c, 1.0); }`,
   }));
   scene.add(sky);
-  scene.fog = new THREE.Fog('#bcd6ef', 140, 720);
+  scene.fog = new THREE.Fog('#bcd6ef', 260, 900);
 
   const hemi = new THREE.HemisphereLight('#cfe4ff', '#7d7398', 0.6);
   scene.add(hemi);
@@ -348,8 +367,9 @@ export function buildWorld(scene) {
     const a = rr(0, Math.PI * 2), d = rr(120, 220);
     scene.add(cloud(Math.cos(a) * d, rr(20, 45), Math.sin(a) * d, rr(25, 50), 0.6));
   }
-  // Clouds along the opening fly-in.
-  for (const [x, y, z, s] of [[-33, 21, 62, 10], [-52, 22, 70, 14]]) {
+  // Clouds along the opening fly-in. They sit just above the camera's path, so the flight
+  // passes under them but they don't cover Star Square in the title shot.
+  for (const [x, y, z, s] of [[-33, 34, 62, 10], [-52, 37, 70, 14]]) {
     scene.add(cloud(x, y, z, s, 0.85));
   }
 
@@ -670,7 +690,7 @@ export function buildWorld(scene) {
   const LANDING = V(34.8, 0, BRIDGE_Z);
   const bridgeStones = STONE_X.map((x, i) => {
     const g = new THREE.Group();
-    g.add(mesh(lumpy(0.95, 1, 0.18, i + 4), new THREE.MeshStandardMaterial({ color: '#8d7aa8', flatShading: true }), { pos: [0, -0.75, 0], scale: [1, 0.8, 1] }));
+    g.add(mesh(lumpy(0.95, 1, 0.18, i + 4), toon({ color: '#8d7aa8', flatShading: true }), { pos: [0, -0.75, 0], scale: [1, 0.8, 1] }));
     g.add(mesh(new THREE.CylinderGeometry(0.98, 0.9, 0.3, 14), mat('#6cb24b'), { pos: [0, -0.15, 0] }));
     const rune = mesh(new THREE.TorusGeometry(0.75, 0.05, 6, 30), new THREE.MeshStandardMaterial({ color: '#bff6ff', emissive: '#4fe3ff', emissiveIntensity: 0 }), { pos: [0, 0.02, 0], rot: [Math.PI / 2, 0, 0], cast: false });
     g.add(rune);
@@ -888,6 +908,8 @@ export function buildWorld(scene) {
       },
       kick() { crankSpin += 9; },
       aimDish(t) { dishPivot.rotation.z = -t * 1.2; },
+      // Pans the dish around: 0 faces the gate (east), PI/2 faces south, PI faces west.
+      turnDish(angle) { dishPivot.rotation.y = angle; },
     },
     beam: {
       show(k) {
@@ -920,6 +942,13 @@ export function buildWorld(scene) {
     },
     update(dt, t) {
       for (const u of updaters) u(dt, t);
+    },
+    // Toon shading on or off (for comparing in the ?debug panel).
+    setToon(on) {
+      scene.traverse(o => {
+        const twin = o.material && twins.get(o.material);
+        if (twin && twin.isMeshToonMaterial === on) o.material = twin;
+      });
     },
   };
 }

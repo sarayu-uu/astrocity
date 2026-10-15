@@ -12,16 +12,35 @@ Open http://localhost:8000. You need to serve the folder because the camera only
 
 ## The chapter (~15 minutes)
 
-1. **Arrival.** The camera flies through the clouds to Poppy's garden. She is yanking a glowing relic out of the ground while Nutty eats a bun. Nutty wanders off.
-2. **Star Square.** Explore by dragging, scrolling, or using WASD. Click characters and buildings. Lumi is tinkering at the workshop, Mimi is rehearsing by the fountain, and Zuzu is asleep under the big tree. Zuzu (with one eye) saw Nutty head to the old bridge.
-3. **The old bridge.** Nutty is stranded beside a "giant potato" across the gap.
-4. **Movement 1: jump.** Poppy hops the drifting stones when the child jumps. One stone has sunk, and raising both arms lifts it.
-5. **Gate Rock.** The potato is a Starway Gate. The relic fits, but there's no power.
-6. **Movement 2: arm pumps.** The child cranks Lumi's Sky Crank, which fires a beam across the gap.
-7. **Movement 3: poses.** The gate's carvings are poses: star (both arms up), bridge (arms out) and moon (one arm up). Copy and hold each one.
-8. **The Starway returns.** The bridge reconnects, and Nutty trips into a hug. The camera pulls back as a second Starway lights up toward **Glow Forest**: *New route discovered*.
+Chapter 1 is a list of steps in [js/chapters/ch01-first-starway/chapter.js](js/chapters/ch01-first-starway/chapter.js). Story scenes and movement activities take turns:
+
+| # | Step | Type | Movement |
+|---|---|---|---|
+| 1 | Poppy finds a stone | scene | |
+| 2 | Where is Nutty? | explore (click friends) | |
+| 3 | The old bridge | scene | |
+| 4 | Cross the stones | activity · `hop-stones` | jump, both arms up |
+| 5 | The big potato | scene | |
+| 6 | Aim the dish | activity · `side-step` | step left / right |
+| 7 | Turn the Sky Crank | activity · `arm-pump` | arms up, then down |
+| 8 | The gate wakes up | scene | |
+| 9 | Copy the poses | activity · `pose-match` | star, bridge, moon |
+| 10 | The Starway comes back | scene | |
+| 11 | Play in Star Square | free play | |
 
 There are no scores, stars or fail states. A mistimed jump only makes Poppy wobble. If the child steps out of view, the adventure pauses until they come back.
+
+**Story controls (every chapter gets these):**
+
+- **Skip** on every scene.
+- **Hear again** (speaker button) on every line.
+- **Play again** or **Keep going** after every activity. It keeps going by itself after 8 seconds.
+- **Continue** on the title screen, which starts from the last step you reached.
+- **Story panel** (book button), which replays any step you have reached.
+
+Skip and replay work by fast-forwarding the earlier steps behind a curtain, so the world is always in the right state.
+
+**Left / right:** the camera picture is split into three equal parts (left, middle, right). The game uses the middle of the child's shoulders and hips, in the mirrored picture, so "left" is the child's own left. During left/right activities the camera preview shows the three parts, with the target part in yellow.
 
 **Keyboard fallback:**
 
@@ -29,27 +48,53 @@ There are no scores, stars or fail states. A mistimed jump only makes Poppy wobb
 |---|---|
 | Space | Jump |
 | W / ↑ | Arms up (hold to lift, tap to crank) |
+| ← / A, → / D | Step left / right |
 | 1 / 2 / 3 | Star / bridge / moon pose |
+| Enter / R | Keep going / play again (after an activity) |
 
 ## Code
 
 ```
-js/main.js     renderer, bloom, picking, pause-when-unseen, shared game context
-js/story.js    the whole chapter as one script, plus the three movement missions
-js/world.js    Star Square, the bridge, Gate Rock, Glow Forest, far islands, sky
-js/buddies.js  the five plush characters and their animation states
-js/camera.js   cinematic moves, fly-throughs, follow shots, explore controls
-js/input.js    webcam + MediaPipe Pose -> jump, arms up/down, three poses
-js/ui.js       subtitle dialogue, barks, place name, objective, move coach
-js/audio.js    synthesized ambient music and effects
+js/main.js                 boot: renderer, main loop, picking, panels
+js/core/                   shared systems, not tied to any chapter
+  game.js                  the game context `g`: frame / wait / tween, skipping, camera setup
+  director.js              plays a chapter's steps: skip, continue, replay, play again
+  input.js                 webcam + MediaPipe Pose -> jump, arms, poses, left/middle/right zone
+  ui.js                    dialogue, barks, coach, title, skip, done card, arrows
+  camera.js                cinematic moves, follow shots, explore controls
+  audio.js                 synthesized music and sound effects
+js/world/
+  world.js                 Star Square, the bridge, Gate Rock, Glow Forest, sky
+  buddies.js               the five plush characters and their animation states
+js/activities/             reusable movement engines (no story text inside)
+  hop-stones.js            jump across drifting stones, lift a sunken one
+  side-step.js             step left / right where the arrow points
+  arm-pump.js              pump arms to charge a machine
+  pose-match.js            copy and hold a row of poses
+  index.js                 the list of engines
+js/chapters/
+  index.js                 the list of chapters
+  ch01-first-starway/
+    chapter.js             running order of steps
+    scenes.js              story scenes (camera and staging)
+    lines.js               every line of dialogue, in simple English
+    activities.js          each activity: label, engine, difficulty, text, world object
 ```
 
-Missions are plain async functions built on `await g.frame()`. That makes the next chapter's missions (Glow Forest: reaching, pose matching) easy to add in `story.js` style.
+### Editing
+
+- **Change words:** edit `lines.js`, or the `text` of an activity in `activities.js`.
+- **Change difficulty:** edit `tune` in `activities.js`. `all` applies to everyone, `little` and `big` override it.
+- **Reorder or remove steps:** edit `steps` in `chapter.js`.
+- **New version of an activity for another chapter:** copy its entry into that chapter's `activities.js`, then give it a new `id` and `label`, and change the words, numbers and world object. The engine doesn't change.
+- **New kind of activity:** add an engine in `js/activities/` with `run`, `reset` (for Play again) and `finish` (the end state, for skipping), then list it in `js/activities/index.js`.
+- **New chapter:** add a `ch02-…/` folder with the same four files and list it in `js/chapters/index.js`.
 
 ## Known gaps
 
-- The jump and pose thresholds in `js/input.js` are first guesses. They need tuning with real kids in a real room.
+- The jump and pose thresholds in `js/core/input.js` are first guesses. They need tuning with real kids in a real room.
 - The characters are built in code from the reference sheet. They are close stand-ins, not final art. Swapping in modelled GLB characters later would mean replacing `Buddy` construction only, since animation states are separate.
+- The left/right zones need testing in a real room. A child may need to take a big step to move from one third of the picture to the next, depending on how far they are from the laptop.
 - "Read lines aloud" uses the browser's built-in voices, which sound robotic. Real voice acting would be a big upgrade.
 
 The first prototype (the mini-game version) is archived in `archive/v1/`.

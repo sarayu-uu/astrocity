@@ -12,7 +12,10 @@
     {
       "imports": {
         "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+        "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+        "postprocessing": "https://cdn.jsdelivr.net/npm/postprocessing@6.39.5/build/index.js",
+        "n8ao": "https://cdn.jsdelivr.net/npm/n8ao@1.10.3/dist/N8AO.js"
       }
     }
   </script>
@@ -26,8 +29,11 @@
     <div class="title-inner">
       <small>Astra Buddies</small>
       <h1>Astra</h1>
-      <p>Five little aliens. One big world. Something has just woken up.</p>
-      <button id="btn-enter">Enter Astra <span aria-hidden="true">→</span></button>
+      <p>Five little friends. One big world. Come and play!</p>
+      <div class="title-actions">
+        <button id="btn-continue" hidden>Continue <span id="continue-name"></span> <span aria-hidden="true">→</span></button>
+        <button id="btn-enter">Start <span aria-hidden="true">→</span></button>
+      </div>
     </div>
   </div>
 
@@ -36,6 +42,9 @@
     <div id="place"><small id="place-sub"></small><span id="place-name"></span></div>
     <div id="objective" hidden><i></i><span id="objective-text"></span></div>
     <div id="corner">
+      <button id="btn-story" aria-label="Story">
+        <svg viewBox="0 0 24 24"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13ZM13 4h5.5c.8 0 1.5.7 1.5 1.5v13c0 .8-.7 1.5-1.5 1.5H13V4Z"/></svg>
+      </button>
       <button id="btn-map" aria-label="Map">
         <svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Zm0 0v14m6-12v14"/></svg>
       </button>
@@ -49,7 +58,29 @@
     <div id="dlg-name"></div>
     <p id="dlg-text"></p>
     <div id="dlg-actions"></div>
+    <button id="dlg-replay" aria-label="Hear it again" title="Hear it again">
+      <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Zm12.5 3a4.5 4.5 0 0 0-2-3.7v7.4a4.5 4.5 0 0 0 2-3.7Z"/></svg>
+    </button>
     <div id="dlg-next" aria-hidden="true">▾</div>
+  </div>
+
+  <button id="btn-skip" hidden>Skip <span aria-hidden="true">⏭</span></button>
+
+  <div id="curtain"><span id="curtain-text"></span></div>
+
+  <!-- Where to step, for left / right activities. -->
+  <div id="arrow" hidden aria-hidden="true">
+    <svg viewBox="0 0 100 100"><path d="M62 18 30 50l32 32"/></svg>
+  </div>
+
+  <!-- After an activity: keep going, or play it again. -->
+  <div id="done" hidden>
+    <strong id="done-title"></strong>
+    <div class="done-actions">
+      <button id="done-again"><span aria-hidden="true">↺</span> Play again</button>
+      <button id="done-next" class="primary">Keep going <span aria-hidden="true">→</span></button>
+    </div>
+    <div class="done-track"><i id="done-timer"></i></div>
   </div>
 
   <div id="tooltip" hidden></div>
@@ -67,25 +98,33 @@
   </div>
 
   <div id="setup" hidden>
-    <h2>Poppy needs to see you move</h2>
-    <p>You'll jump, reach and pose to help the buddies. The camera picture stays on this device.</p>
+    <h2>Poppy wants to see you move!</h2>
+    <p>You will jump, step and pose to help your friends. The camera picture stays on this computer.</p>
     <button id="setup-camera" class="primary">Use the camera</button>
     <button id="setup-keys" class="ghost">Play with the keyboard</button>
     <p id="setup-status" role="status"></p>
   </div>
 
-  <div id="lost" hidden><strong>Poppy can't see you</strong><span>Step back into view and the adventure will carry on.</span></div>
+  <div id="lost" hidden><strong>Poppy can't see you</strong><span>Step back in. Then we can keep playing.</span></div>
 
   <div id="settings" class="sheet" hidden>
     <header><h2>Settings</h2><button data-close aria-label="Close">✕</button></header>
     <label class="row"><span>Read lines aloud</span><input type="checkbox" id="set-voice" checked></label>
     <label class="row"><span>Volume</span><input type="range" id="set-volume" min="0" max="1" step="0.05" value="0.6"></label>
+    <label class="row"><span>Low quality (faster)</span><input type="checkbox" id="set-low"></label>
     <fieldset class="row">
       <legend>Explorer</legend>
       <label><input type="radio" name="age" value="little" checked> Little (3–6)</label>
       <label><input type="radio" name="age" value="big"> Big (7–12)</label>
     </fieldset>
-    <p class="fine">Little explorers get steadier stones, shorter holds and fewer cranks.</p>
+    <p class="fine">Little explorers get slower stones, shorter holds and fewer steps.</p>
+  </div>
+
+  <div id="story" class="sheet" hidden>
+    <header><h2>Story</h2><button data-close aria-label="Close">✕</button></header>
+    <p class="fine" id="story-chapter"></p>
+    <ol id="story-list"></ol>
+    <p class="fine">Pick a part to play it again.</p>
   </div>
 
   <div id="map" class="sheet" hidden>

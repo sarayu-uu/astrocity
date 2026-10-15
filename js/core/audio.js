@@ -3,12 +3,14 @@
 let ctx = null;
 let master = null;
 let musicBus = null;
+let volume = 0.6;
+let muted = false;
 
 export function audio() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain();
-    master.gain.value = 0.6;
+    master.gain.value = muted ? 0 : volume;
     master.connect(ctx.destination);
     musicBus = ctx.createGain();
     musicBus.gain.value = 0.35;
@@ -18,7 +20,17 @@ export function audio() {
   return ctx;
 }
 
-export function setVolume(v) { audio(); master.gain.value = v; }
+export function setVolume(v) {
+  volume = v;
+  audio();
+  master.gain.value = muted ? 0 : volume;
+}
+
+// Silences everything while a scene is fast-forwarded (skip / replay).
+export function mute(on) {
+  muted = on;
+  if (master) master.gain.value = muted ? 0 : volume;
+}
 
 const midi = n => 440 * 2 ** ((n - 69) / 12);
 

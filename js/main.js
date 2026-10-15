@@ -1,16 +1,26 @@
+// Boots Astra: renderer, world, buddies, input and UI, then hands over to the director, which
+// plays the chapter. Nothing in here is specific to one chapter.
+//
+//   js/core/        shared systems (game context, director, input, UI, camera, audio)
+//   js/world/       the 3D world and the five buddies
+//   js/activities/  reusable movement-activity engines
+//   js/chapters/    each chapter: running order, scenes, lines, activity settings
+
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { buildWorld } from './world.js';
-import { Buddy } from './buddies.js';
-import { MotionInput } from './input.js';
-import { UI } from './ui.js';
-import { CameraRig } from './camera.js';
-import { story } from './story.js';
-import { audio, setVolume, sfx } from './audio.js';
+import { buildWorld } from './world/world.js';
+import { Buddy } from './world/buddies.js';
+import { MotionInput } from './core/input.js';
+import { UI } from './core/ui.js';
+import { CameraRig } from './core/camera.js';
+import { setVolume } from './core/audio.js';
+import { createGame } from './core/game.js';
+import { playChapter, loadProgress, saveProgress } from './core/director.js';
+import { CHAPTERS } from './chapters/index.js';
 
 const $ = s => document.querySelector(s);
 const canvas = $('#view');
@@ -30,12 +40,37 @@ scene.environmentIntensity = 0.35;
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 1400);
 
-// A soft bloom so the Starway, the relic and lit windows actually glow.
+// Passes: N8AO (soft shadows where things touch, so the world looks grounded; it draws the
+// scene itself) or a plain RenderPass, then a soft bloom so the Starway, the relic and lit
+// windows glow. N8AO loads separately, so the game still runs if it fails to load.
+// "Low quality" in Settings turns off AO and bloom for slow laptops.
 const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.6, 0.88);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+
+let ao = null;
+let lowQuality = false;
+try { lowQuality = localStorage.getItem('astra.lowQuality') === '1'; } catch { /* no storage */ }
+
+function setLowQuality(on) {
+  lowQuality = on;
+  bloom.enabled = !on;
+  if (ao) ao.enabled = !on;
+  renderPass.enabled = !ao || on;
+  try { localStorage.setItem('astra.lowQuality', on ? '1' : '0'); } catch { /* no storage */ }
+}
+
+const aoReady = import('n8ao').then(({ N8AOPass }) => {
+  ao = new N8AOPass(scene, camera, innerWidth, innerHeight);
+  // gammaCorrection off: the OutputPass at the end already converts colours for the screen.
+  Object.assign(ao.configuration, { aoRadius: 2, distanceFalloff: 1, intensity: 2.5, halfRes: true, gammaCorrection: false });
+  composer.insertPass(ao, 1);
+  composer.setSize(innerWidth, innerHeight);
+  setLowQuality(lowQuality);
+}).catch(err => console.warn('Ambient occlusion unavailable:', err));
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -59,77 +94,8 @@ const ui = new UI();
 const rig = new CameraRig(camera, canvas);
 ui.onSpeak = (who, on) => { if (who && B[who]) B[who].talking = on; };
 
-// ---- The shared game context the story drives ----------------------------------
-let waiters = [];
-const g = {
-  scene, camera, W, B, input, ui, rig,
-  settings: { age: 'little' },
-  dt: 0,
-  needsBody: false,
-  onPick: null,
-  discovered: new Set(['square', 'gate']),
-
-  // Resolves on the next unpaused frame. Movement missions are built from these.
-  frame() { return new Promise(r => waiters.push(r)); },
-
-  async tween(duration, fn) {
-    let t = 0;
-    while (t < duration) {
-      await g.frame();
-      t += g.dt;
-      fn(Math.min(1, t / duration));
-    }
-  },
-
-  wait(seconds) { return g.tween(seconds, () => {}); },
-
-  title() {
-    $('#title').hidden = false;
-    return new Promise(resolve => {
-      $('#btn-enter').onclick = () => {
-        audio();
-        $('#title').classList.add('leaving');
-        setTimeout(() => { $('#title').hidden = true; }, 1200);
-        resolve();
-      };
-    });
-  },
-
-  async ensureInput() {
-    if (input.mode) return;
-    for (;;) {
-      const how = await ui.chooseInput();
-      if (how === 'keyboard') {
-        input.useKeyboard();
-        return;
-      }
-      ui.setupStatus('Waking up the camera…');
-      try {
-        await input.startCamera();
-        break;
-      } catch (err) {
-        ui.setupStatus(`The camera didn't start (${err.message || err.name}). The keyboard works too.`, true);
-      }
-    }
-    ui.hideSetup();
-    ui.coach('stand', 'Step back until Poppy can see all of you', 'Head to knees, with room to jump');
-    let seen = 0;
-    while (seen < 1.5) {
-      await g.frame();
-      seen = input.tracking ? seen + g.dt : 0;
-      ui.setCoachProgress(seen / 1.5);
-    }
-    ui.setCoachProgress(0);
-    ui.coach('stand', 'Perfect! Poppy can see you.', '');
-    sfx.chime();
-    await g.wait(1.2);
-  },
-
-  discover(id) {
-    g.discovered.add(id);
-    renderMap();
-  },
-};
+const g = createGame({ scene, camera, W, B, input, ui, rig });
+g.onDiscover = () => renderMap();
 
 // ---- Pointing at things in the world ---------------------------------------------
 const raycaster = new THREE.Raycaster();
@@ -157,12 +123,16 @@ canvas.addEventListener('click', e => {
 });
 
 // ---- Settings & map ------------------------------------------------------------
-const panel = id => { for (const p of ['#settings', '#map']) $(p).hidden = p !== id || !$(p).hidden; };
+const panel = id => { for (const p of ['#settings', '#map', '#story']) $(p).hidden = p !== id || !$(p).hidden; };
 $('#btn-settings').onclick = () => panel('#settings');
 $('#btn-map').onclick = () => panel('#map');
+$('#btn-story').onclick = () => { renderStory(); panel('#story'); };
 for (const btn of document.querySelectorAll('[data-close]')) btn.onclick = () => panel(null);
 $('#set-voice').onchange = e => { ui.voice = e.target.checked; if (!ui.voice) speechSynthesis?.cancel(); };
 $('#set-volume').oninput = e => setVolume(Number(e.target.value));
+$('#set-low').checked = lowQuality;
+$('#set-low').onchange = e => setLowQuality(e.target.checked);
+setLowQuality(lowQuality);
 for (const r of document.querySelectorAll('[name=age]')) {
   r.onchange = () => {
     g.settings.age = r.value;
@@ -180,18 +150,45 @@ function renderMap() {
 }
 renderMap();
 
+// ---- Story panel: replay any step you've reached --------------------------------------
+const chapter = CHAPTERS[0];
+let currentStep = 0;
+
+function renderStory() {
+  const { reached } = loadProgress(chapter.id);
+  $('#story-chapter').textContent = `Chapter ${chapter.number} · ${chapter.title}`;
+  const list = $('#story-list');
+  list.innerHTML = '';
+  chapter.steps.forEach((step, i) => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.textContent = step.name;
+    b.className = step.activity ? 'activity' : 'scene';
+    b.disabled = i > reached;
+    if (i === currentStep) b.classList.add('now');
+    // Replaying reloads the page and fast-forwards to the step, so the world is set up right.
+    b.onclick = () => {
+      saveProgress(chapter.id, { ...loadProgress(chapter.id), resume: i });
+      location.reload();
+    };
+    li.appendChild(b);
+    list.appendChild(li);
+  });
+}
+
 // ---- Main loop -------------------------------------------------------------------
 const clock = new THREE.Clock();
 let lostFor = 0;
 let paused = false;
 
 function frame() {
-  const dt = Math.min(0.05, clock.getDelta());
+  const realDt = Math.min(0.05, clock.getDelta());
+  const dt = realDt * g.timeScale; // much faster while a scene is skipped
   const t = clock.elapsedTime;
-  input.update(dt);
+  input.update(realDt);
 
   // Movement missions pause (gently) whenever the child steps out of view.
-  lostFor = g.needsBody && input.camera && !input.tracking ? lostFor + dt : 0;
+  lostFor = g.needsBody && input.camera && !input.tracking ? lostFor + realDt : 0;
   if ((lostFor > 0.6) !== paused) {
     paused = lostFor > 0.6;
     ui.lost(paused);
@@ -212,23 +209,38 @@ function frame() {
     canvas.style.cursor = '';
   }
 
-  if (input.camera && !$('#coach').hidden) input.drawPreview($('#coach-cam'));
+  if (input.camera && !$('#coach').hidden) input.drawPreview($('#coach-cam'), ui.preview ?? {});
   $('#coach-cam').hidden = !input.camera;
 
-  composer.render();
+  // While a scene fast-forwards the curtain hides the screen, so don't spend time drawing.
+  if (!g.skipping) composer.render();
 
-  if (!paused) {
-    g.dt = dt;
-    const ready = waiters;
-    waiters = [];
-    for (const r of ready) r(dt);
-  }
+  if (!paused) g.tick(dt);
   requestAnimationFrame(frame);
 }
 
 window.astra = g; // handy for poking at the world from the dev console
 
+// ?debug in the URL: live sliders for the look of the world.
+if (new URLSearchParams(location.search).has('debug')) {
+  aoReady.then(() => import('three/addons/libs/lil-gui.module.min.js')).then(({ default: GUI }) => {
+    const gui = new GUI({ title: 'Look' });
+    const look = { toon: true };
+    gui.add(look, 'toon').name('Toon shading').onChange(on => W.setToon(on));
+    gui.add(scene.fog, 'near', 0, 1000, 10).name('Fog near');
+    gui.add(scene.fog, 'far', 100, 1400, 10).name('Fog far');
+    if (ao) {
+      gui.add(ao, 'enabled').name('AO').onChange(on => { renderPass.enabled = !on; });
+      gui.add(ao.configuration, 'intensity', 0.5, 6, 0.1).name('AO intensity'); // N8AO glitches at 0
+      gui.add(ao.configuration, 'aoRadius', 0.2, 6, 0.1).name('AO radius');
+      gui.add(ao.configuration, 'halfRes').name('AO half resolution');
+      gui.add({ view: 'Combined' }, 'view', ['Combined', 'AO', 'No AO', 'Split']).name('AO view')
+        .onChange(mode => ao.setDisplayMode(mode));
+    }
+  });
+}
+
 document.fonts.ready.finally(() => {
   requestAnimationFrame(frame);
-  story(g).catch(err => console.error(err));
+  playChapter(g, chapter, { onStep: i => { currentStep = i; } }).catch(err => console.error(err));
 });

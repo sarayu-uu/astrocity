@@ -1,8 +1,10 @@
 // The thin layer of interface on top of the world: subtitles-style dialogue, a place name,
-// a quiet objective line, speech barks above characters, and the move coach for camera play.
+// a quiet objective line, speech barks above characters, the move coach for camera play,
+// and the story controls (skip, hear again, play again).
 
 import * as THREE from 'three';
-import { CAST } from './buddies.js';
+import { CAST } from '../world/buddies.js';
+import { audio } from './audio.js';
 
 const $ = s => document.querySelector(s);
 
@@ -13,11 +15,21 @@ const FIG = {
   moon: '<path d="M60 56 L86 12 M60 56 L40 92"/>',
 };
 
+// A figure stepping sideways, with an arrow showing which way.
+const STEP = {
+  left: '<path class="arrow" d="M44 160 L8 160 M20 150 L8 160 L20 170"/>',
+  right: '<path class="arrow" d="M76 160 L112 160 M100 150 L112 160 L100 170"/>',
+  center: '<path class="arrow" d="M40 160 L80 160"/>',
+};
+
 export function figure(kind) {
   const legs = '<path d="M60 96 L44 146 M60 96 L76 146"/>';
   const core = '<circle cx="60" cy="27" r="14"/><path d="M60 42 L60 96"/>';
   if (kind === 'jump') {
     return `<svg viewBox="0 0 120 170" class="fig fig-jump"><g class="hop">${core}<path d="M60 56 L34 26 M60 56 L86 26"/>${legs}</g><path class="ground" d="M24 164 L96 164"/></svg>`;
+  }
+  if (kind in STEP) {
+    return `<svg viewBox="0 0 120 176" class="fig fig-step fig-step-${kind}"><g class="body">${core}${FIG.stand}${legs}</g>${STEP[kind]}</svg>`;
   }
   if (kind === 'pump') {
     return `<svg viewBox="0 0 120 170" class="fig fig-pump">${core}${legs}<g class="up">${FIG.star}</g><g class="down">${FIG.stand}</g></svg>`;
@@ -30,16 +42,46 @@ export class UI {
     this.voice = true;
     this.onSpeak = () => {};
     this.barks = [];
+    this.preview = null; // camera preview options during an activity, e.g. { zones: true }
+    this.isSkipping = () => false; // set by the game: true while a scene fast-forwards
     this._advance = null;
+    this._finish = null;
     this._typing = null;
+    this._line = null;
 
     const dlg = $('#dialogue');
     dlg.addEventListener('click', () => this._next());
+    $('#dlg-replay').addEventListener('click', e => {
+      e.stopPropagation();
+      if (this._line) this._speak(...this._line);
+    });
     addEventListener('keydown', e => {
       if ((e.code === 'Enter' || e.code === 'Space') && !$('#dialogue').hidden && !$('#dlg-actions').childElementCount) {
         e.preventDefault();
         this._next();
       }
+    });
+  }
+
+  // ---- Title -------------------------------------------------------------------
+
+  // Resolves 'new' or 'continue'. Continue only shows when there's somewhere to continue to.
+  title({ continueName = null } = {}) {
+    const el = $('#title');
+    el.hidden = false;
+    $('#btn-continue').hidden = !continueName;
+    $('#continue-name').textContent = continueName ?? '';
+    $('#btn-enter').firstChild.textContent = continueName ? 'Start from the beginning ' : 'Start ';
+    $('#btn-enter').classList.toggle('quiet', !!continueName);
+    return new Promise(resolve => {
+      const go = choice => {
+        audio();
+        el.classList.add('leaving');
+        setTimeout(() => { el.hidden = true; }, 1200);
+        resolve(choice);
+      };
+      $('#btn-enter').onclick = () => go('new');
+      $('#btn-continue').onclick = () => go('continue');
     });
   }
 
@@ -74,7 +116,9 @@ export class UI {
   // Resolves when the line is dismissed: with the chosen index when choices are given,
   // or on its own after `auto` seconds (used during movement play, so nobody needs a mouse).
   say(who, text, { choices = null, auto = null } = {}) {
+    if (this.isSkipping()) return Promise.resolve(0);
     const P = who ? CAST[who] : null;
+    this._line = [who, text];
     const dlg = $('#dialogue');
     dlg.hidden = false;
     dlg.classList.toggle('narration', !P);
@@ -105,6 +149,7 @@ export class UI {
         clearInterval(this._typing);
         this._typing = null;
         this._advance = null;
+        this._finish = null;
         clearTimeout(timer);
         this.onSpeak(who, false);
         resolve(v);
@@ -122,6 +167,7 @@ export class UI {
       } else if (auto !== null) {
         timer = setTimeout(() => done(0), auto * 1000);
       }
+      this._finish = () => { this.hideDialogue(); done(0); };
       this._advance = () => {
         if (this._typing) {
           clearInterval(this._typing);
@@ -135,6 +181,9 @@ export class UI {
   }
 
   _next() { this._advance?.(); }
+
+  // Ends whatever line is showing right away (used by Skip). A choice counts as the first one.
+  flush() { this._finish?.(); }
 
   hideDialogue() {
     $('#dialogue').hidden = true;
@@ -157,6 +206,7 @@ export class UI {
   // ---- In-world speech barks ---------------------------------------------------
 
   bark(buddy, text, duration = 1.8) {
+    if (this.isSkipping()) return;
     const el = document.createElement('div');
     el.className = 'bark';
     el.textContent = text;
@@ -196,6 +246,7 @@ export class UI {
   // ---- Discovery moments -------------------------------------------------------
 
   async toast(kicker, title, seconds = 4.5) {
+    if (this.isSkipping()) return;
     const el = $('#toast');
     el.querySelector('small').textContent = kicker;
     el.querySelector('strong').textContent = title;
@@ -208,6 +259,7 @@ export class UI {
   }
 
   async chapterCard(kicker, title) {
+    if (this.isSkipping()) return;
     const el = $('#chapter');
     el.querySelector('small').textContent = kicker;
     el.querySelector('strong').textContent = title;
@@ -258,4 +310,56 @@ export class UI {
   hideSetup() { $('#setup').hidden = true; }
 
   lost(on) { $('#lost').hidden = !on; }
+
+  // A big arrow at the side of the screen: where to step. null hides it.
+  arrow(side) {
+    const el = $('#arrow');
+    el.hidden = !side;
+    if (side) el.dataset.side = side;
+  }
+
+  // ---- Story controls ------------------------------------------------------------
+
+  // Shows the Skip button while `onSkip` is set; null hides it.
+  skipButton(onSkip) {
+    const b = $('#btn-skip');
+    b.hidden = !onSkip;
+    b.onclick = onSkip ? () => { b.hidden = true; onSkip(); } : null;
+  }
+
+  // Covers the screen while a scene fast-forwards, so nobody sees it zip past.
+  curtain(on, text = '') {
+    const el = $('#curtain');
+    $('#curtain-text').textContent = text;
+    el.classList.toggle('on', on);
+  }
+
+  // After an activity: "Keep going" (also after a few seconds on its own) or "Play again".
+  activityDone(title, { again = true, seconds = 8 } = {}) {
+    const el = $('#done');
+    $('#done-title').textContent = title;
+    $('#done-again').hidden = !again;
+    el.hidden = false;
+    const bar = $('#done-timer');
+    bar.style.animation = 'none';
+    void bar.offsetWidth;
+    bar.style.animation = `drain ${seconds}s linear forwards`;
+    return new Promise(resolve => {
+      const finish = choice => {
+        clearTimeout(timer);
+        removeEventListener('keydown', onKey);
+        el.hidden = true;
+        resolve(choice);
+      };
+      const onKey = e => {
+        if (e.code === 'Enter') finish('next');
+        if (e.code === 'KeyR' && again) finish('again');
+      };
+      const timer = setTimeout(() => finish('next'), seconds * 1000);
+      addEventListener('keydown', onKey);
+      $('#done-next').onclick = () => finish('next');
+      $('#done-again').onclick = () => finish('again');
+      setTimeout(() => $('#done-next').focus(), 50);
+    });
+  }
 }

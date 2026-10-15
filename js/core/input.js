@@ -3,6 +3,8 @@
 //   consumeJump()  true once per real jump
 //   pose           'star' (both arms up) | 'bridge' (arms out wide) | 'moon' (one arm up) | null
 //   armsUp / armsDown
+//   zone           'left' | 'center' | 'right': which third of the (mirrored) camera picture
+//                  the child's body is in, so "left" is the child's own left
 //   tracking       a body is in view
 // The laptop-camera MVP deliberately sticks to these; no continuous full-body steering.
 
@@ -13,6 +15,11 @@ const SKELETON = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [1
 const JUMP_SENSITIVITY = { little: 0.1, big: 0.15 }; // hip rise, in torso-lengths
 const visible = p => p && (p.visibility ?? 1) > 0.5;
 
+// The picture is split into three equal parts. A child has to cross a line by ZONE_MARGIN
+// before the zone changes, so standing right on a line doesn't flicker between two zones.
+const ZONE_LINES = [1 / 3, 2 / 3];
+const ZONE_MARGIN = 0.04;
+
 export class MotionInput {
   constructor(video) {
     this.video = video;
@@ -22,6 +29,8 @@ export class MotionInput {
     this.pose = null;
     this.armsUp = false;
     this.armsDown = true;
+    this.zone = 'center';
+    this.bodyX = 0.5; // 0 = left edge, 1 = right edge, as the child sees the mirrored picture
     this.jumpSensitivity = JUMP_SENSITIVITY.little;
 
     this._landmarker = null;
@@ -81,6 +90,20 @@ export class MotionInput {
     this.armsUp = k.has('KeyW') || k.has('ArrowUp') || k.has('Digit1');
     this.armsDown = !this.armsUp;
     this.pose = this.armsUp ? 'star' : k.has('Digit2') ? 'bridge' : k.has('Digit3') ? 'moon' : null;
+    const left = k.has('ArrowLeft') || k.has('KeyA');
+    const right = k.has('ArrowRight') || k.has('KeyD');
+    this.zone = left === right ? 'center' : left ? 'left' : 'right';
+    this.bodyX = { left: 1 / 6, center: 0.5, right: 5 / 6 }[this.zone];
+  }
+
+  _updateZone(x) {
+    this.bodyX = x;
+    const [a, b] = ZONE_LINES;
+    const m = ZONE_MARGIN;
+    if (this.zone === 'left') { if (x > a + m) this.zone = x > b + m ? 'right' : 'center'; }
+    else if (this.zone === 'right') { if (x < b - m) this.zone = x < a - m ? 'left' : 'center'; }
+    else if (x < a - m) this.zone = 'left';
+    else if (x > b + m) this.zone = 'right';
   }
 
   _detect(dt) {
@@ -98,6 +121,9 @@ export class MotionInput {
       return;
     }
     this.tracking = true;
+
+    // Left / centre / right: the middle of the shoulders and hips, flipped to match the mirror.
+    this._updateZone(1 - (lm[11].x + lm[12].x + lm[23].x + lm[24].x) / 4);
 
     const shoulderY = (lm[11].y + lm[12].y) / 2;
     const hipY = (lm[23].y + lm[24].y) / 2;
@@ -142,7 +168,8 @@ export class MotionInput {
     else this.pose = null;
   }
 
-  drawPreview(canvas) {
+  // `zones` draws the three-part split; `target` ('left' | 'center' | 'right') lights one part up.
+  drawPreview(canvas, { zones = false, target = null } = {}) {
     const c = canvas.getContext('2d');
     const { width: w, height: h } = canvas;
     c.save();
@@ -173,5 +200,33 @@ export class MotionInput {
       }
     }
     c.restore();
+    if (zones) this._drawZones(c, w, h, target);
+  }
+
+  // Drawn after the mirror flip is undone, so 'left' really is on the left.
+  _drawZones(c, w, h, target) {
+    const parts = ['left', 'center', 'right'];
+    const edges = [0, ...ZONE_LINES, 1];
+    parts.forEach((zone, i) => {
+      const x0 = edges[i] * w, x1 = edges[i + 1] * w;
+      if (zone === target) {
+        c.fillStyle = 'rgba(255, 212, 71, 0.28)';
+        c.fillRect(x0, 0, x1 - x0, h);
+      }
+      if (this.tracking && zone === this.zone) {
+        c.fillStyle = 'rgba(143, 240, 255, 0.22)';
+        c.fillRect(x0, 0, x1 - x0, h);
+      }
+    });
+    c.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    c.lineWidth = 2;
+    c.setLineDash([8, 8]);
+    for (const x of ZONE_LINES) {
+      c.beginPath();
+      c.moveTo(x * w, 0);
+      c.lineTo(x * w, h);
+      c.stroke();
+    }
+    c.setLineDash([]);
   }
 }
