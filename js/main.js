@@ -77,10 +77,26 @@ const aoReady = import('n8ao').then(({ N8AOPass }) => {
     aoRadius: 2, distanceFalloff: 1, intensity: 1.6, halfRes: true, gammaCorrection: false,
     transparencyAware: true, color: new THREE.Color('#4a3a6e'),
   });
+  ao.scene = renderPass.scene; // in case a stage opened before AO finished loading
+  ao.camera = renderPass.camera;
   composer.insertPass(ao, 1);
   composer.setSize(innerWidth, innerHeight);
   setLowQuality(lowQuality);
 }).catch(err => console.warn('Ambient occlusion unavailable:', err));
+
+// What the renderer draws: the island, or an open activity stage (js/core/stage.js).
+let viewCamera = camera;
+function setView(s, c) {
+  const toScene = s ?? scene;
+  viewCamera = c ?? camera;
+  renderPass.scene = toScene;
+  renderPass.camera = viewCamera;
+  if (ao) {
+    ao.scene = toScene;
+    ao.camera = viewCamera;
+  }
+  resize();
+}
 
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -89,6 +105,10 @@ function resize() {
   camera.aspect = innerWidth / innerHeight;
   camera.fov = camera.aspect < 1 ? 55 : 38;
   camera.updateProjectionMatrix();
+  if (viewCamera !== camera) {
+    viewCamera.aspect = innerWidth / innerHeight;
+    viewCamera.updateProjectionMatrix();
+  }
 }
 addEventListener('resize', resize);
 resize();
@@ -104,9 +124,11 @@ for (const kind of ['poppy', 'nutty', 'lumi', 'mimi', 'zuzu']) {
 const input = new MotionInput($('#cam'));
 const ui = new UI();
 const rig = new CameraRig(camera, canvas);
-ui.onSpeak = (who, on) => { if (who && B[who]) B[who].talking = on; };
-
 const g = createGame({ scene, camera, W, B, input, ui, rig });
+g.setView = setView;
+// Dialogue animates whichever buddies are in play: the island's, or a stage's copies.
+ui.onSpeak = (who, on) => { if (who && g.cast[who]) g.cast[who].talking = on; };
+ui.isCast = b => Object.values(g.cast).includes(b);
 g.onDiscover = () => renderMap();
 
 // ---- Pointing at things in the world ---------------------------------------------
@@ -190,8 +212,10 @@ function renderStory() {
 
 // ---- Main loop -------------------------------------------------------------------
 const clock = new THREE.Clock();
+const RESUME_COUNT = 3; // seconds of 3-2-1 after the child steps back into view
 let lostFor = 0;
 let paused = false;
+let resumeIn = 0;
 
 function frame() {
   const realDt = Math.min(0.05, clock.getDelta());
@@ -199,19 +223,32 @@ function frame() {
   const t = clock.elapsedTime;
   input.update(realDt);
 
-  // Movement missions pause (gently) whenever the child steps out of view.
+  // Movement missions pause (gently) whenever the child steps out of view, and pick up again
+  // with a 3-2-1 once they are back.
   lostFor = g.needsBody && input.camera && !input.tracking ? lostFor + realDt : 0;
-  if ((lostFor > 0.6) !== paused) {
-    paused = lostFor > 0.6;
-    ui.lost(paused);
+  if (lostFor > 0.6) {
+    if (!paused) ui.lost(true);
+    paused = true;
+    resumeIn = RESUME_COUNT;
+    ui.countdown(null);
+  } else if (paused && lostFor === 0) {
+    ui.lost(false);
+    resumeIn -= realDt;
+    ui.countdown(resumeIn > 0 ? Math.ceil(resumeIn) : null);
+    if (resumeIn <= 0) paused = false;
   }
 
-  W.update(dt, t);
-  for (const b of Object.values(B)) b.update(dt, camera);
-  rig.update(dt);
-  ui.update(camera);
+  // The island is paused (kept as it was) while an activity stage is open.
+  if (g.stage) {
+    g.stage.update(dt, t);
+  } else {
+    W.update(dt, t);
+    for (const b of Object.values(B)) b.update(dt, camera);
+    rig.update(dt);
+  }
+  ui.update(viewCamera);
 
-  if (hoverXY && g.onPick) {
+  if (hoverXY && g.onPick && !g.stage) {
     const o = pickAt(...hoverXY);
     const label = o ? (o.userData.buddy?.name ?? o.userData.label) : null;
     ui.tooltip(label, hoverXY[0] + 14, hoverXY[1] + 14);
@@ -255,6 +292,36 @@ if (new URLSearchParams(location.search).has('debug')) {
     lookF.close();
     const { createMovesPanel } = await import('./core/debug-moves.js');
     debugTick = createMovesPanel(input, gui, { age: () => g.settings.age });
+
+    // Stages: enter / leave the test stage, and a 10-round-trip memory check.
+    const { enterStage, exitStage } = await import('./core/stage.js');
+    const { default: testStage } = await import('./stages/test-stage.js');
+    const stageF = gui.addFolder('Stages');
+    const report = { result: '' };
+    const counts = () => ({ ...renderer.info.memory, programs: renderer.info.programs?.length ?? 0 });
+    const frames = n => new Promise(r => { const f = () => (n-- > 0 ? requestAnimationFrame(f) : r()); f(); });
+    stageF.add({ enter: () => enterStage(g, testStage) }, 'enter').name('Enter test stage');
+    stageF.add({ leave: () => exitStage(g) }, 'leave').name('Leave');
+    stageF.add({
+      run: async () => {
+        const rows = [{ trip: 0, ...counts() }];
+        for (let i = 1; i <= 10; i++) {
+          report.result = `round trip ${i} / 10…`;
+          await enterStage(g, testStage, { instant: i > 1 });
+          await frames(3);
+          await exitStage(g, { instant: i > 1 });
+          await frames(3);
+          rows.push({ trip: i, ...counts() });
+        }
+        console.table(rows);
+        // Pass: counts level off by the 2nd round trip and stay flat after it.
+        const flat = rows.slice(2).every(r => r.geometries === rows[2].geometries && r.textures === rows[2].textures && r.programs === rows[2].programs);
+        const last = rows.at(-1);
+        report.result = `${flat ? 'PASS' : 'FAIL'} · geo ${rows[0].geometries}→${last.geometries} · tex ${rows[0].textures}→${last.textures} · prog ${rows[0].programs}→${last.programs}`;
+        window.astraStageReport = rows;
+      },
+    }, 'run').name('×10 enter / leave');
+    stageF.add(report, 'result').name('Result').listen().disable();
   });
 }
 

@@ -44,6 +44,7 @@ export class UI {
     this.barks = [];
     this.preview = null; // camera preview options during an activity, e.g. { zones: true }
     this.isSkipping = () => false; // set by the game: true while a scene fast-forwards
+    this.isCast = () => true; // set by the game: is this buddy in play (island vs stage)?
     this._advance = null;
     this._finish = null;
     this._typing = null;
@@ -228,7 +229,8 @@ export class UI {
       v.project(camera);
       b.el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`;
       b.el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`;
-      b.el.hidden = v.z > 1;
+      // Barks belong to the world on screen: an island buddy's bark hides while a stage is open.
+      b.el.hidden = v.z > 1 || !this.isCast(b.buddy);
       return true;
     });
   }
@@ -328,6 +330,28 @@ export class UI {
   hideSetup() { $('#setup').hidden = true; }
 
   lost(on) { $('#lost').hidden = !on; }
+
+  // A big 3, 2, 1 before play picks up again; null hides it.
+  countdown(n) {
+    const el = $('#countdown');
+    el.hidden = !n;
+    if (n && el.textContent !== String(n)) {
+      el.textContent = n;
+      el.classList.remove('tick');
+      void el.offsetWidth;
+      el.classList.add('tick');
+    }
+  }
+
+  // The portal between the island and an activity stage: closes over the screen (on = true)
+  // or opens again (false). A plain fade for anyone who prefers reduced motion.
+  portal(on) {
+    const el = $('#portal');
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.classList.toggle('reduced', reduced);
+    el.classList.toggle('closed', on);
+    return new Promise(r => setTimeout(r, reduced ? 400 : 800));
+  }
 
   // A big arrow at the side of the screen: where to step. null hides it.
   arrow(side) {

@@ -62,6 +62,7 @@ js/main.js                 boot: renderer, main loop, picking, panels
 js/core/                   shared systems, not tied to any chapter
   game.js                  the game context `g`: frame / wait / tween, skipping, camera setup
   director.js              plays a chapter's steps: skip, continue, replay, play again
+  stage.js                 activity stages: separate little worlds behind a portal, island paused
   input.js                 webcam + MediaPipe Pose -> jump, arms, poses, zone, duck, lean, freeze
   debug-moves.js           the ?debug Moves panel: live lights, threshold sliders, record / replay
   ui.js                    dialogue, barks, coach, title, skip, done card, arrows
@@ -70,6 +71,7 @@ js/core/                   shared systems, not tied to any chapter
 js/world/
   world.js                 Star Square, the bridge, Gate Rock, Glow Forest, sky
   buddies.js               the five plush characters and their animation states
+js/stages/                 activity stage worlds (test-stage.js is the ?debug test)
 js/activities/             reusable movement engines (no story text inside)
   hop-stones.js            jump across drifting stones, lift a sunken one
   side-step.js             step left / right where the arrow points
@@ -91,6 +93,8 @@ Open the game with `?debug` on the end of the address to get the **Moves** panel
 - live lights for every move, and sliders for the duck, lean and freeze thresholds;
 - **Record 10 s**, which saves the camera's body landmarks (not video) as a JSON file;
 - **Replay…**, which feeds a saved recording back through the same detection.
+
+The **Stages** folder in the `?debug` panel enters and leaves a test stage, and its **×10 enter / leave** checks that memory stays flat (shapes, textures, shader programs).
 
 To check a recording without a browser, run `node tools/replay-moves.mjs recording.json`. It prints when each move starts and stops. You can override a threshold, for example `--duckDrop 0.2`.
 

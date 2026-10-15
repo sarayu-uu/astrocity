@@ -15,6 +15,11 @@ export function createGame({ scene, camera, W, B, input, ui, rig }) {
 
   const g = {
     scene, camera, W, B, input, ui, rig,
+    // The buddies in play: the island's (g.B), or a stage's copies while one is open.
+    cast: B,
+    stage: null, // the open activity stage (js/core/stage.js), if any
+    setView: () => {}, // set by main.js: draw (scene, camera), or the island again with null
+    sharedResources: new Set(), // textures, materials... a stage's clean-up must never dispose
     settings: { age: 'little' },
     dt: 0,
     needsBody: false,
