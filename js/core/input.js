@@ -24,14 +24,13 @@ const visible = p => p && (p.visibility ?? 1) >= 0.5;
 
 // Tunable thresholds (the ?debug panel has sliders). Duck numbers depend on the age setting.
 export const TUNE_DEFAULTS = {
-  little: { duckDrop: 0.18, duckHold: 0.15, leanDeg: 15, freezeK: 3 },
-  big: { duckDrop: 0.22, duckHold: 0.1, leanDeg: 15, freezeK: 3 },
+  little: { duckDrop: 0.18, duckHold: 0.15, leanDeg: 10, freezeK: 3 },
+  big: { duckDrop: 0.22, duckHold: 0.1, leanDeg: 10, freezeK: 3 },
 };
 
 const CALIBRATE_FULL = 1.5; // seconds, during "Step back so Poppy can see you"
 const CALIBRATE_REGAIN = 0.5; // seconds of steady tracking before re-capturing after a loss
 const AFTER_LANDING = 0.3; // no duck right after a jump lands
-const AFTER_DUCK = 0.4; // no jump right after standing up from a duck
 const MIN_JITTER = 0.03; // torso-lengths per second: floor for the measured noise
 
 // The picture is split into three equal parts. A child has to cross a line by ZONE_MARGIN
@@ -57,7 +56,7 @@ export class MotionInput {
     this.jumpSensitivity = JUMP_SENSITIVITY.little;
     this.tune = { ...TUNE_DEFAULTS.little };
     // Live numbers for the ?debug panel.
-    this.debug = { drop: 0, leanAngle: 0, speed: 0, stillBelow: 0, jitter: null, calibrating: false };
+    this.debug = { drop: 0, leanAngle: 0, speed: 0, stillBelow: 0, jitter: null, calibrating: false, fps: 0 };
 
     this._landmarker = null;
     this._lastVideoTime = -1;
@@ -66,7 +65,7 @@ export class MotionInput {
     this._airborne = false;
     this._airTime = 0;
     this._sinceLanding = 9;
-    this._sinceDuck = 9;
+    this._sinceDuck = 9; // seconds since the last duck ended
     this._hipBase = null;
     this._duckHeld = 0;
     this._leanHeld = 0;
@@ -131,22 +130,23 @@ export class MotionInput {
   // Collects standing samples, then sets the duck baseline and the freeze noise floor.
 
   beginCalibration(seconds = CALIBRATE_FULL) {
-    this._calib = { seconds, time: 0, mids: [], torsos: [], speeds: [] };
+    this._calib = { seconds, time: 0, mids: [], torsos: [], hips: [], speeds: [] };
     this.debug.calibrating = true;
   }
 
   get calibrated() { return !!this._baseline; }
   get calibrating() { return !!this._calib; }
 
-  _feedCalibration(mid, torso, rawSpeed, dt) {
+  _feedCalibration(mid, torso, hipY, rawSpeed, dt) {
     const c = this._calib;
     c.time += dt;
+    c.hips.push(hipY);
     c.mids.push(mid);
     c.torsos.push(torso);
     if (rawSpeed !== null) c.speeds.push(rawSpeed);
     if (c.time < c.seconds) return;
     const median = list => [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)];
-    this._baseline = { mid: median(c.mids), torso: median(c.torsos) };
+    this._baseline = { mid: median(c.mids), torso: median(c.torsos), hip: median(c.hips) };
     // The quietest quarter of the motion is the camera's own noise, even if the child fidgets.
     if (c.speeds.length > 4) {
       const sorted = [...c.speeds].sort((a, b) => a - b);
@@ -266,6 +266,7 @@ export class MotionInput {
 
   _process(lm, dt) {
     this.landmarks = lm;
+    this.debug.fps += (1 / dt - this.debug.fps) * (1 - Math.exp(-dt / 1)); // body frames per second
     if (!lm || ![11, 12, 23, 24].every(i => visible(lm[i]))) {
       if (this.tracking) this._resetBody();
       return;
@@ -302,23 +303,26 @@ export class MotionInput {
     // (Re)capture the standing baseline: on request, or after tracking comes back.
     if (regained && this._baseline && !this._calib) this.beginCalibration(CALIBRATE_REGAIN);
     if (!this._baseline && !this._calib) this.beginCalibration(CALIBRATE_REGAIN);
-    if (this._calib) this._feedCalibration(mid, torso, rawSpeed, dt);
+    if (this._calib) this._feedCalibration(mid, torso, hip.y, rawSpeed, dt);
     const base = this._baseline;
 
-    // Jump: hips rise well above their resting height. Not while ducking or just after.
+    // Jump: hips rise well above their standing height. While crouching or ducking, that
+    // reference stays at standing height (it doesn't follow the hips down), so standing back up
+    // from a squat isn't a jump, but a real jump straight out of a crouch still is.
     this._sinceDuck = this.duck ? 0 : this._sinceDuck + dt;
-    const jumpBlocked = this.duck || this._sinceDuck < AFTER_DUCK;
-    if (this._hipBase === null || jumpBlocked) this._hipBase = hip.y;
+    if (this._hipBase === null) this._hipBase = base?.hip ?? hip.y;
+    const crouching = this.duck || this._duckHeld > 0;
+    if (crouching && base && this._hipBase > base.hip) this._hipBase = base.hip;
     const rise = (this._hipBase - hip.y) / torso;
     if (!this._airborne) {
       this._sinceLanding += dt;
-      if (rise > this.jumpSensitivity && !jumpBlocked) {
+      if (rise > this.jumpSensitivity) {
         this._airborne = true;
         this._airTime = 0;
         this._jumpQueued = true;
         this.jumps++;
-      } else {
-        this._hipBase += (hip.y - this._hipBase) * 0.05;
+      } else if (!crouching && hip.y < this._hipBase + torso * this.tune.duckDrop * 0.5) {
+        this._hipBase += (hip.y - this._hipBase) * (1 - Math.exp(-dt / 0.6));
       }
     } else {
       this._airTime += dt;
@@ -390,6 +394,7 @@ export class MotionInput {
       const k = 1 - Math.exp(-dt / 4);
       base.mid += (mid - base.mid) * k;
       base.torso += (torso - base.torso) * k;
+      base.hip += (hip.y - base.hip) * k;
     }
   }
 

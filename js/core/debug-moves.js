@@ -23,7 +23,7 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
     <p id="mv-status"></p>`;
   document.body.appendChild(panel);
 
-  const rows = ['tracking', 'zone', 'jump', 'arms', 'pose', 'duck', 'lean', 'still', 'baseline'];
+  const rows = ['tracking', 'zone', 'jump', 'arms', 'pose', 'duck', 'lean', 'still', 'baseline', 'speed'];
   const list = $('#mv-list');
   const cells = {};
   for (const r of rows) {
@@ -93,6 +93,7 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
 
   let lastJumps = input.jumps;
   let jumpFlash = 0;
+  let renderFps = 60;
 
   // Call once per frame.
   return function update(dt) {
@@ -103,6 +104,7 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
       jumpFlash = 0.4;
     }
     jumpFlash = Math.max(0, jumpFlash - dt);
+    if (dt > 0) renderFps += (1 / dt - renderFps) * (1 - Math.exp(-dt / 1));
     const d = input.debug;
     const freezeHold = { little: 2, big: 3 }[age()];
     set('tracking', input.tracking, input.mode === 'replay' && input.replayDone ? 'replay ended' : '');
@@ -115,6 +117,9 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
     set('still', input.stillFor >= freezeHold, input.camera
       ? `${input.stillFor.toFixed(1)} s · ${d.speed.toFixed(2)} < ${d.stillBelow.toFixed(2)}`
       : `${input.stillFor.toFixed(1)} s`);
+    // Body tracking needs ~20+ frames a second to catch a jump; below that, warn.
+    const bodyFps = input.camera ? input.debug.fps : null;
+    set('speed', bodyFps !== null && bodyFps < 15, `game ${renderFps.toFixed(0)} fps${bodyFps !== null ? ` · body ${bodyFps.toFixed(0)} fps${bodyFps < 15 ? ' (too slow!)' : ''}` : ''}`);
     set('baseline', input.calibrated && !input.calibrating, input.calibrating ? 'calibrating…' : input.calibrated ? `jitter ${(d.jitter ?? 0).toFixed(3)}` : 'none');
   };
 }
