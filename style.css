@@ -512,8 +512,9 @@ body:not(.cinematic) #btn-skip { top: 76px; }
 #mv-mode { margin-left: auto; color: var(--muted); }
 #mv-size { width: 26px; height: 22px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); cursor: pointer; line-height: 1; }
 #mv-size:hover { background: rgba(255, 255, 255, 0.22); }
-#moves[data-size="mini"] { width: 180px; padding: 8px; opacity: 0.85; }
-#moves[data-size="mini"] :is(#mv-list, .mv-buttons, #mv-status) { display: none; }
+#moves[data-size="mini"] { width: 200px; padding: 8px; opacity: 0.85; }
+#moves[data-size="mini"] :is(#mv-list, #mv-status, .mv-buttons > :not([data-act=camera], [data-act=keyboard])) { display: none; }
+#moves[data-size="mini"] .mv-buttons { margin-top: 6px; }
 #moves[data-size="closed"] { width: auto; padding: 6px 10px; }
 #moves[data-size="closed"] :is(#mv-cam, #mv-list, .mv-buttons, #mv-status) { display: none; }
 #moves[data-size="closed"] header { margin: 0; }
