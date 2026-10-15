@@ -56,7 +56,7 @@ export class MotionInput {
     this.jumpSensitivity = JUMP_SENSITIVITY.little;
     this.tune = { ...TUNE_DEFAULTS.little };
     // Live numbers for the ?debug panel.
-    this.debug = { drop: 0, leanAngle: 0, speed: 0, stillBelow: 0, jitter: null, calibrating: false, fps: 0 };
+    this.debug = { drop: 0, leanAngle: 0, speed: 0, stillBelow: 0, jitter: null, calibrating: false, fps: 0, why: '' };
 
     this._landmarker = null;
     this._lastVideoTime = -1;
@@ -268,9 +268,14 @@ export class MotionInput {
     this.landmarks = lm;
     this.debug.fps += (1 / dt - this.debug.fps) * (1 - Math.exp(-dt / 1)); // body frames per second
     if (!lm || ![11, 12, 23, 24].every(i => visible(lm[i]))) {
+      // Why tracking is off, for the ?debug panel: usually the child is too close to the camera.
+      this.debug.why = !lm ? 'no one in view'
+        : ![23, 24].every(i => visible(lm[i])) ? 'hips not in view: step back'
+        : 'shoulders not in view';
       if (this.tracking) this._resetBody();
       return;
     }
+    this.debug.why = '';
     const regained = !this.tracking;
     this.tracking = true;
     const T = this.tune;

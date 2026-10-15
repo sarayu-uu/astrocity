@@ -107,7 +107,7 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
     if (dt > 0) renderFps += (1 / dt - renderFps) * (1 - Math.exp(-dt / 1));
     const d = input.debug;
     const freezeHold = { little: 2, big: 3 }[age()];
-    set('tracking', input.tracking, input.mode === 'replay' && input.replayDone ? 'replay ended' : '');
+    set('tracking', input.tracking, input.mode === 'replay' && input.replayDone ? 'replay ended' : input.tracking ? '' : input.debug.why);
     set('zone', input.zone !== 'center', input.zone);
     set('jump', jumpFlash > 0, `${input.jumps} total`);
     set('arms', input.armsUp, input.armsUp ? 'up' : input.armsDown ? 'down' : 'mid');
