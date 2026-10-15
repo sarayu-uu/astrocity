@@ -236,11 +236,29 @@ export class UI {
   tooltip(text, x, y) {
     const t = $('#tooltip');
     t.hidden = !text;
-    if (text) {
-      t.textContent = text;
-      t.style.left = `${x}px`;
-      t.style.top = `${y}px`;
+    if (!text) return;
+    t.textContent = text;
+    t.style.left = `${x}px`;
+    t.style.top = `${y}px`;
+    // Never sit on top of the place name / objective: drop below them instead.
+    const hud = this._hudBox();
+    const r = t.getBoundingClientRect();
+    if (hud && r.left < hud.right && r.right > hud.left && r.top < hud.bottom && r.bottom > hud.top) {
+      t.style.top = `${hud.bottom + 8}px`;
     }
+  }
+
+  // The screen box covered by the top-left HUD text, or null when it isn't showing.
+  _hudBox() {
+    if ($('#hud').hidden) return null;
+    const boxes = ['#place', '#objective'].map(s => $(s)).filter(el => !el.hidden).map(el => el.getBoundingClientRect());
+    if (!boxes.length) return null;
+    return {
+      left: Math.min(...boxes.map(b => b.left)) - 8,
+      right: Math.max(...boxes.map(b => b.right)) + 8,
+      top: Math.min(...boxes.map(b => b.top)) - 8,
+      bottom: Math.max(...boxes.map(b => b.bottom)),
+    };
   }
 
   // ---- Discovery moments -------------------------------------------------------
