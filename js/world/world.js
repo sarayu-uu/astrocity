@@ -82,22 +82,51 @@ function lumpy(radius, detail, amount, seed = 1) {
   return g;
 }
 
+// Grass colours: a soft, warm green with lighter, darker and yellow-green patches.
+const GRASS = { base: '#88c25e', light: '#a3d27b', dark: '#6ea84f', yellow: '#b9cf65' };
+
+// Fine blade detail only, in near-white, so the patch colours (vertex colours) set the hue.
 const grassTex = canvasTex(256, 256, (g, w, h) => {
-  g.fillStyle = '#5fb444';
+  g.fillStyle = '#eef2e6';
   g.fillRect(0, 0, w, h);
   for (let i = 0; i < 2600; i++) {
-    g.fillStyle = `hsla(${rr(85, 115)}, ${rr(40, 65)}%, ${rr(30, 52)}%, 0.55)`;
+    g.fillStyle = `hsla(${rr(70, 110)}, ${rr(15, 35)}%, ${rr(72, 94)}%, 0.5)`;
     g.fillRect(rr(0, w), rr(0, h), rr(1, 3), rr(2, 6));
   }
 }, { repeat: [10, 10] });
+
+// A grass disc with large, gentle colour patches baked into its vertices.
+function grassDisc(r, seed) {
+  const geo = new THREE.RingGeometry(0, r, 72, 28);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  const base = new THREE.Color(GRASS.base), light = new THREE.Color(GRASS.light);
+  const dark = new THREE.Color(GRASS.dark), yellow = new THREE.Color(GRASS.yellow);
+  const c = new THREE.Color();
+  const colors = [];
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i);
+    const patch = (Math.sin(x * 0.21 + seed) * Math.cos(z * 0.17 - seed * 1.3)
+      + Math.sin((x - z) * 0.11 + seed * 2.1) * 0.8 + Math.cos((x + z) * 0.29 + seed * 0.7) * 0.4) / 2.2;
+    c.copy(base).lerp(patch > 0 ? light : dark, Math.min(1, Math.abs(patch) * 0.9));
+    const sunny = Math.sin(x * 0.13 + seed * 3) * Math.cos(z * 0.23 + seed);
+    c.lerp(yellow, Math.max(0, sunny - 0.35) * 1.2);
+    colors.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const m = toon({ map: grassTex, vertexColors: true, roughness: 1 });
+  // Drawn just above the island top without fighting it for depth.
+  for (const v of [m, twins.get(m)]) Object.assign(v, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  return mesh(geo, m, { pos: [0, 0.002, 0], cast: false });
+}
 
 // A floating island: grassy top with a soft rolled edge, and craggy layered rock underneath.
 function island({ x = 0, y = 0, z = 0, r = 10, depth = 14, seed = 1, top = null, rock = ['#b07a4c', '#9a7cb4', '#6a5a96'] }) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
-  const topMat = top ? mat(top) : toon({ map: grassTex, roughness: 1 });
-  g.add(mesh(new THREE.CylinderGeometry(r, r * 0.98, 1, 72), topMat, { pos: [0, -0.5, 0], cast: false }));
-  g.add(mesh(new THREE.TorusGeometry(r - 0.05, 0.38, 10, 72), mat(top || '#6cb24b'), { pos: [0, -0.32, 0], rot: [Math.PI / 2, 0, 0], cast: false }));
+  g.add(mesh(new THREE.CylinderGeometry(r, r * 0.98, 1, 72), mat(top || GRASS.base), { pos: [0, -0.5, 0], cast: false }));
+  if (!top) g.add(grassDisc(r, seed));
+  g.add(mesh(new THREE.TorusGeometry(r - 0.05, 0.38, 10, 72), mat(top || GRASS.base), { pos: [0, -0.32, 0], rot: [Math.PI / 2, 0, 0], cast: false }));
   g.add(mesh(new THREE.CylinderGeometry(r * 0.99, r * 0.95, 1.1, 48), mat('#8f6440'), { pos: [0, -1.4, 0] }));
 
   // Underside: a lathed, tapering rock profile with ledges, then roughened by noise.
@@ -427,11 +456,18 @@ export function buildWorld(scene) {
     [-15, -10, 3.4], [5, 12, 1.5], [15.5, 11.5, 3.2], [-7, 9, 1.8]];
   const free = (x, z, pad = 0) => Math.hypot(x, z) < 20.5 && !isPath(x, z) && occupied.every(([ox, oz, or]) => Math.hypot(x - ox, z - oz) > or + pad);
 
-  // Grass tufts and flowers.
-  const tuftGeo = new THREE.ConeGeometry(0.06, 0.3, 5, 1, true);
-  const tufts = new THREE.InstancedMesh(tuftGeo, new THREE.MeshStandardMaterial({ roughness: 1, side: THREE.DoubleSide }), 1400);
+  // Grass tufts (the ground's own green, lighter at the tips) and flowers.
+  const tuftGeo = new THREE.ConeGeometry(0.07, 0.28, 5, 1, true);
+  const tuftShade = [];
+  for (let i = 0; i < tuftGeo.attributes.position.count; i++) {
+    const k = 0.75 + 0.55 * (tuftGeo.attributes.position.getY(i) / 0.28 + 0.5);
+    tuftShade.push(k, k, k);
+  }
+  tuftGeo.setAttribute('color', new THREE.Float32BufferAttribute(tuftShade, 3));
+  const TUFTS = 840;
+  const tufts = new THREE.InstancedMesh(tuftGeo, new THREE.MeshStandardMaterial({ roughness: 1, side: THREE.DoubleSide, vertexColors: true }), TUFTS);
   let n = 0;
-  while (n < 1400) {
+  while (n < TUFTS) {
     const x = rr(-21, 21), z = rr(-21, 21);
     if (!free(x, z)) continue;
     tmp.position.set(x, 0.17, z);
@@ -439,7 +475,7 @@ export function buildWorld(scene) {
     tmp.scale.setScalar(rr(0.5, 1.1));
     tmp.updateMatrix();
     tufts.setMatrixAt(n, tmp.matrix);
-    tufts.setColorAt(n++, new THREE.Color().setHSL(rr(0.25, 0.31), 0.6, rr(0.24, 0.34)));
+    tufts.setColorAt(n++, new THREE.Color(GRASS.base).offsetHSL(rr(-0.02, 0.02), 0, rr(-0.06, 0.04)));
   }
   scene.add(tufts);
   const flowerColors = ['#ff6f9c', '#ffd447', '#b28cff', '#ffffff', '#ff984f', '#5ec3ff'];
@@ -693,7 +729,7 @@ export function buildWorld(scene) {
   const bridgeStones = STONE_X.map((x, i) => {
     const g = new THREE.Group();
     g.add(mesh(lumpy(0.95, 1, 0.18, i + 4), toon({ color: '#8d7aa8', flatShading: true }), { pos: [0, -0.75, 0], scale: [1, 0.8, 1] }));
-    g.add(mesh(new THREE.CylinderGeometry(0.98, 0.9, 0.3, 14), mat('#6cb24b'), { pos: [0, -0.15, 0] }));
+    g.add(mesh(new THREE.CylinderGeometry(0.98, 0.9, 0.3, 14), mat(GRASS.base), { pos: [0, -0.15, 0] }));
     const rune = mesh(new THREE.TorusGeometry(0.75, 0.05, 6, 30), new THREE.MeshStandardMaterial({ color: '#bff6ff', emissive: '#4fe3ff', emissiveIntensity: 0 }), { pos: [0, 0.02, 0], rot: [Math.PI / 2, 0, 0], cast: false });
     g.add(rune);
     g.userData = { x, phase: i * 1.7, rune, raise: i === 2 ? 0 : 1, sunk: i === 2 };
