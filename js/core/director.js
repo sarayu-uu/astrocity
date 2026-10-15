@@ -8,7 +8,9 @@
 // the world is always in the right state and scenes never need special "jump in here" code.
 
 import { ENGINES } from '../activities/index.js';
+import { STAGES } from '../stages/index.js';
 import { startAmbient } from './audio.js';
+import { withStage } from './stage.js';
 
 const SAVE_KEY = 'astra.progress.v2';
 
@@ -27,6 +29,30 @@ export function saveProgress(chapterId, progress) {
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch {
     // No storage (private window): the chapter still plays, it just won't remember.
+  }
+}
+
+// Best scores per activity and age band, kept beside the progress in the same save.
+export function loadScores() {
+  try {
+    return JSON.parse(localStorage.getItem(SAVE_KEY))?.scores ?? {};
+  } catch {
+    return {};
+  }
+}
+
+// Saves `result` if its score beats the best so far; returns the best (old or new).
+export function saveBest(activityId, age, result) {
+  try {
+    const all = JSON.parse(localStorage.getItem(SAVE_KEY)) ?? {};
+    all.scores ??= {};
+    const key = `${activityId}:${age}`;
+    const best = all.scores[key];
+    if (!best || result.score > best.score) all.scores[key] = { ...result, at: new Date().toISOString() };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(all));
+    return all.scores[key];
+  } catch {
+    return result;
   }
 }
 
@@ -73,7 +99,9 @@ export async function playChapter(g, chapter, { onStep = () => {} } = {}) {
 }
 
 // An activity entry (see chapters/*/activities.js) names a reusable engine and configures it.
-async function runActivity(g, activity, fastForward) {
+// With `stage: 'name'` it runs inside that activity stage (js/stages/), always coming back to
+// the island afterwards. Engines with `ownsResult` show their own result card.
+export async function runActivity(g, activity, fastForward = false) {
   const { ui } = g;
   const engine = ENGINES[activity.engine];
   if (!engine) throw new Error(`Activity "${activity.id}" uses unknown engine "${activity.engine}"`);
@@ -91,14 +119,17 @@ async function runActivity(g, activity, fastForward) {
   if (a.place) ui.place(...a.place);
   ui.objective(a.goal);
 
+  const stageDef = a.stage ? STAGES[a.stage] : null;
+  if (a.stage && !stageDef) throw new Error(`Activity "${a.id}" uses unknown stage "${a.stage}"`);
   for (;;) {
-    await engine.run(g, a);
+    if (stageDef) await withStage(g, stageDef, stage => engine.run(g, a, stage));
+    else await engine.run(g, a);
     g.needsBody = false;
     ui.hideCoach();
     ui.setCoachProgress(0);
     ui.arrow(null);
     ui.preview = null;
-    if (a.again === false) break;
+    if (engine.ownsResult || a.again === false) break;
     const next = await ui.activityDone(a.text.done ?? 'You did it!');
     if (next === 'next') break;
     engine.reset(g, a);

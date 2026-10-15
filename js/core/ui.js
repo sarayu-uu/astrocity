@@ -28,6 +28,10 @@ export function figure(kind) {
   if (kind === 'jump') {
     return `<svg viewBox="0 0 120 170" class="fig fig-jump"><g class="hop">${core}<path d="M60 56 L34 26 M60 56 L86 26"/>${legs}</g><path class="ground" d="M24 164 L96 164"/></svg>`;
   }
+  if (kind === 'duck') {
+    return `<svg viewBox="0 0 120 170" class="fig fig-duck"><circle cx="60" cy="78" r="14"/><path d="M60 93 L60 120 M60 100 L36 112 M60 100 L84 112 M60 120 L40 132 L46 156 M60 120 L80 132 L74 156"/><path class="ground" d="M24 164 L96 164"/></svg>`;
+  }
+  if (kind === 'armsUp') kind = 'star';
   if (kind in STEP) {
     return `<svg viewBox="0 0 120 176" class="fig fig-step fig-step-${kind}"><g class="body">${core}${FIG.stand}${legs}</g>${STEP[kind]}</svg>`;
   }
@@ -358,6 +362,70 @@ export class UI {
     const el = $('#arrow');
     el.hidden = !side;
     if (side) el.dataset.side = side;
+  }
+
+  // ---- Runner HUD -------------------------------------------------------------------
+
+  // state: { progress (0..1, or null in endless), count, stars, endless, onStop } or null to hide.
+  runHud(state) {
+    const el = $('#run-hud');
+    if (!state) {
+      el.hidden = true;
+      $('#run-stop').onclick = null;
+      return;
+    }
+    el.hidden = false;
+    if (state.onStop) $('#run-stop').onclick = state.onStop;
+    if (state.endless !== undefined) el.classList.toggle('endless', state.endless);
+    if (state.progress !== undefined) {
+      $('#run-progress').hidden = state.progress === null;
+      if (state.progress !== null) $('#run-fill').style.transform = `scaleX(${state.progress})`;
+    }
+    if (state.count !== undefined) $('#run-count').textContent = state.count;
+    if (state.stars !== undefined) $('#run-stars').textContent = state.stars ? `★ ${state.stars}` : '';
+  }
+
+  // A big picture of the next move, about 1.5 s before it's needed. null hides it.
+  moveCue(move) {
+    const el = $('#cue');
+    clearTimeout(this._cueTimer);
+    if (!move) {
+      el.hidden = true;
+      return;
+    }
+    el.innerHTML = figure(move);
+    el.hidden = false;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    this._cueTimer = setTimeout(() => { el.hidden = true; }, 1300);
+  }
+
+  breather(on) { $('#breather').hidden = !on; }
+
+  // { title, stars, rows: [[label, value]], more } -> resolves 'more' (Keep going) or 'story'.
+  runResult({ title, stars, rows, more }) {
+    const el = $('#result');
+    $('#result-title').textContent = title;
+    $('#result-stars').innerHTML = [1, 2, 3].map(i => `<span class="${i <= stars ? 'on' : ''}">★</span>`).join('');
+    $('#result-rows').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><strong>${v}</strong></div>`).join('');
+    $('#result-more').hidden = !more;
+    el.hidden = false;
+    return new Promise(resolve => {
+      const done = choice => {
+        el.hidden = true;
+        removeEventListener('keydown', onKey);
+        resolve(choice);
+      };
+      const onKey = e => {
+        if (e.code === 'Enter') done('story');
+        if (e.code === 'KeyK' && more) done('more');
+      };
+      addEventListener('keydown', onKey);
+      $('#result-more').onclick = () => done('more');
+      $('#result-story').onclick = () => done('story');
+      setTimeout(() => (more ? $('#result-more') : $('#result-story')).focus(), 50);
+    });
   }
 
   // ---- Story controls ------------------------------------------------------------

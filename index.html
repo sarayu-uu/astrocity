@@ -87,6 +87,24 @@
     <div class="done-track"><i id="done-timer"></i></div>
   </div>
 
+  <!-- Runner: progress, collectibles, the next move, rests and results. -->
+  <div id="run-hud" hidden>
+    <div id="run-progress"><i id="run-fill"></i></div>
+    <div id="run-pill"><span class="bun" aria-hidden="true"></span><strong id="run-count">0</strong><span id="run-stars"></span></div>
+    <button id="run-stop">Stop</button>
+  </div>
+  <div id="cue" hidden aria-hidden="true"></div>
+  <div id="breather" hidden><strong>Shake out your arms!</strong><span>Big breath in, and out.</span></div>
+  <div id="result" hidden>
+    <strong id="result-title"></strong>
+    <div id="result-stars"></div>
+    <div id="result-rows"></div>
+    <div class="done-actions">
+      <button id="result-more">Keep going <span aria-hidden="true">→</span></button>
+      <button id="result-story" class="primary">Back to the story</button>
+    </div>
+  </div>
+
   <div id="tooltip" hidden></div>
 
   <div id="toast" hidden><small></small><strong></strong></div>

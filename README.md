@@ -71,12 +71,15 @@ js/core/                   shared systems, not tied to any chapter
 js/world/
   world.js                 Star Square, the bridge, Gate Rock, Glow Forest, sky
   buddies.js               the five plush characters and their animation states
-js/stages/                 activity stage worlds (test-stage.js is the ?debug test)
+js/stages/                 activity stage worlds (test-stage.js, test-track.js: ?debug tests)
 js/activities/             reusable movement engines (no story text inside)
   hop-stones.js            jump across drifting stones, lift a sunken one
   side-step.js             step left / right where the arrow points
   arm-pump.js              pump arms to charge a machine
   pose-match.js            copy and hold a row of poses
+  runner.js                endless runner in a stage: lanes, jumps, ducks, buns, result card
+  runner-sim.js            the runner's rules (seeded, fixed-step, no 3D) and its test bot
+  runner-patterns.js       built-in obstacle patterns
   index.js                 the list of engines
 js/chapters/
   index.js                 the list of chapters
@@ -95,6 +98,8 @@ Open the game with `?debug` on the end of the address to get the **Moves** panel
 - **Replay…**, which feeds a saved recording back through the same detection.
 
 The **Stages** folder in the `?debug` panel enters and leaves a test stage, and its **×10 enter / leave** checks that memory stays flat (shapes, textures, shader programs).
+
+**Runner test** plays a short run on the test track; tick **Autoplay runs (bot)** to watch the bot play it. `node tools/test-runner.mjs` plays every built-in pattern for Little and Big at the fastest speed the game reaches, with the bot changing lanes as slowly as a child on camera, and fails if any obstacle can't be cleared.
 
 To check a recording without a browser, run `node tools/replay-moves.mjs recording.json`. It prints when each move starts and stops. You can override a threshold, for example `--duckDrop 0.2`.
 

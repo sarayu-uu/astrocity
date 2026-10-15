@@ -245,7 +245,7 @@ export class Buddy {
       legSwing = Math.sin(this.phase) * 0.07;
       armFwdL = Math.sin(this.phase) * 0.5;
       armFwdR = -Math.sin(this.phase) * 0.5;
-    } else if (this.hopping) {
+    } else if (this.hopping || this.airborne) {
       armL = armR = ARMS.up * 0.85;
       squash = -0.08;
     } else {
@@ -314,6 +314,27 @@ export class Buddy {
         case 'pose':
           armL = this.pose?.[0] ?? ARMS.rest;
           armR = this.pose?.[1] ?? ARMS.rest;
+          break;
+        // Running on the spot (the runner moves the world instead). `runRate` sets the pace.
+        case 'run':
+          this.phase += dt * (this.runRate ?? 1) * 14;
+          bob = Math.abs(Math.sin(this.phase)) * 0.12;
+          tiltX = 0.12;
+          legSwing = Math.sin(this.phase) * 0.12;
+          armFwdL = Math.sin(this.phase) * 0.9;
+          armFwdR = -Math.sin(this.phase) * 0.9;
+          break;
+        case 'duck':
+          squash = 0.32;
+          lift = -0.05;
+          tiltX = 0.25;
+          armL = armR = 0.9;
+          break;
+        case 'stumble':
+          tiltX = 0.45 + Math.sin(t * 18) * 0.12;
+          tiltZ = Math.sin(t * 23) * 0.12;
+          armL = armR = ARMS.out;
+          mouthOpen = true;
           break;
       }
     }

@@ -6,10 +6,12 @@ import hopStones from './hop-stones.js';
 import sideStep from './side-step.js';
 import armPump from './arm-pump.js';
 import poseMatch from './pose-match.js';
+import runner from './runner.js';
 
 export const ENGINES = {
   [hopStones.id]: hopStones,
   [sideStep.id]: sideStep,
   [armPump.id]: armPump,
   [poseMatch.id]: poseMatch,
+  [runner.id]: runner,
 };

@@ -34,7 +34,7 @@ export function mute(on) {
 
 const midi = n => 440 * 2 ** ((n - 69) / 12);
 
-function tone(freq, start, dur, { type = 'triangle', vol = 0.2, slideTo = null, bus = master, attack = 0.01 } = {}) {
+function tone(freq, start, dur, { type = 'triangle', vol = 0.2, slideTo = null, bus = master, attack = 0.01, pan = 0 } = {}) {
   const c = audio();
   const o = c.createOscillator();
   const g = c.createGain();
@@ -44,7 +44,13 @@ function tone(freq, start, dur, { type = 'triangle', vol = 0.2, slideTo = null, 
   g.gain.setValueAtTime(0.0001, start);
   g.gain.exponentialRampToValueAtTime(vol, start + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-  o.connect(g).connect(bus);
+  if (pan && c.createStereoPanner) {
+    const p = c.createStereoPanner();
+    p.pan.value = pan;
+    o.connect(g).connect(p).connect(bus);
+  } else {
+    o.connect(g).connect(bus);
+  }
   o.start(start);
   o.stop(start + dur + 0.05);
 }
@@ -77,6 +83,14 @@ export const sfx = {
   charge(k) { tone(220 + k * 500, now(), 0.3, { type: 'sawtooth', vol: 0.05, slideTo: 260 + k * 700 }); },
   chime() { const t = now(); [76, 83, 88].forEach((n, i) => tone(midi(n), t + i * 0.08, 0.9, { vol: 0.12 })); },
   whoosh() { noise(now(), 1.2, 0.4, 1800); },
+  // Runner cues: one sound per move, so kids learn them by ear. dir: -1 left, 1 right.
+  cue(move, dir = 0) {
+    const t = now();
+    if (move === 'jump') [72, 79].forEach((n, i) => tone(midi(n), t + i * 0.09, 0.18, { vol: 0.14 }));
+    else if (move === 'duck') [74, 67].forEach((n, i) => tone(midi(n), t + i * 0.09, 0.18, { vol: 0.14 }));
+    else if (move === 'armsUp') [76, 81, 88].forEach((n, i) => tone(midi(n), t + i * 0.06, 0.25, { type: 'sine', vol: 0.11 }));
+    else [71, 71].forEach((n, i) => tone(midi(n), t + i * 0.1, 0.12, { type: 'square', vol: 0.05, pan: dir * 0.8 }));
+  },
   discover() {
     const t = now();
     [60, 64, 67, 71, 74, 79].forEach((n, i) => tone(midi(n), t + i * 0.12, 1.6, { vol: 0.1 }));

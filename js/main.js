@@ -20,7 +20,7 @@ import { UI } from './core/ui.js';
 import { CameraRig } from './core/camera.js';
 import { setVolume } from './core/audio.js';
 import { createGame } from './core/game.js';
-import { playChapter, loadProgress, saveProgress } from './core/director.js';
+import { playChapter, loadProgress, saveProgress, runActivity } from './core/director.js';
 import { CHAPTERS } from './chapters/index.js';
 
 const $ = s => document.querySelector(s);
@@ -225,17 +225,23 @@ function frame() {
 
   // Movement missions pause (gently) whenever the child steps out of view, and pick up again
   // with a 3-2-1 once they are back.
+  // Opening Settings, Map or Story during a movement activity pauses it too. Whatever paused
+  // it, play resumes after a 3-2-1, and g.onResume lets the activity clear the way ahead.
   lostFor = g.needsBody && input.camera && !input.tracking ? lostFor + realDt : 0;
-  if (lostFor > 0.6) {
-    if (!paused) ui.lost(true);
+  const sheetOpen = g.needsBody && ['#settings', '#map', '#story'].some(s => !$(s).hidden);
+  if (lostFor > 0.6 || sheetOpen) {
     paused = true;
+    ui.lost(lostFor > 0.6);
     resumeIn = RESUME_COUNT;
     ui.countdown(null);
   } else if (paused && lostFor === 0) {
     ui.lost(false);
     resumeIn -= realDt;
     ui.countdown(resumeIn > 0 ? Math.ceil(resumeIn) : null);
-    if (resumeIn <= 0) paused = false;
+    if (resumeIn <= 0) {
+      paused = false;
+      g.onResume?.();
+    }
   }
 
   // The island is paused (kept as it was) while an activity stage is open.
@@ -270,6 +276,7 @@ function frame() {
 }
 
 window.astra = g; // handy for poking at the world from the dev console
+g.renderer = renderer; // for memory and draw-call checks (?debug, tests)
 
 // ?debug in the URL: live sliders for the look of the world, and the Moves panel for testing
 // body tracking (js/core/debug-moves.js).
@@ -322,6 +329,11 @@ if (new URLSearchParams(location.search).has('debug')) {
       },
     }, 'run').name('×10 enter / leave');
     stageF.add(report, 'result').name('Result').listen().disable();
+
+    // Runner: play the test run on the test track (Phase 3).
+    const { testRun } = await import('./stages/test-track.js');
+    stageF.add({ run: () => runActivity(g, testRun) }, 'run').name('Runner test');
+    stageF.add(g, 'debugAutoplay').name('Autoplay runs (bot)');
   });
 }
 

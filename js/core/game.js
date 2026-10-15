@@ -19,6 +19,7 @@ export function createGame({ scene, camera, W, B, input, ui, rig }) {
     cast: B,
     stage: null, // the open activity stage (js/core/stage.js), if any
     setView: () => {}, // set by main.js: draw (scene, camera), or the island again with null
+    debugAutoplay: false, // ?debug: the runner's test bot plays instead of the child
     sharedResources: new Set(), // textures, materials... a stage's clean-up must never dispose
     settings: { age: 'little' },
     dt: 0,
