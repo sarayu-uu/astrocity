@@ -133,10 +133,13 @@ export class CameraRig {
       if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) ex.focus.z -= pan;
       if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) ex.focus.z += pan;
       this._clampFocus();
-      const want = ex.focus.clone().add(new THREE.Vector3(0, 9 * ex.zoom, 12.5 * ex.zoom));
+      // About 26 degrees down and fairly close, aimed a little above the ground, so the
+      // buddies' faces show and the square has depth.
+      const want = ex.focus.clone().add(new THREE.Vector3(0, 6.4 * ex.zoom, 11.6 * ex.zoom));
+      const lookAt = ex.focus.clone().add(new THREE.Vector3(0, 0.7, 0));
       const s = 1 - Math.exp(-3 * dt);
       this.pos.lerp(want, s);
-      this.look.lerp(ex.focus, s);
+      this.look.lerp(lookAt, s);
     }
     this.camera.position.copy(this.pos);
     this.camera.lookAt(this.look);
