@@ -544,10 +544,10 @@ export function buildWorld(scene) {
 
   // The relic: a glowing fragment of Starway stone, half-buried in Poppy's garden.
   const relic = new THREE.Group();
-  const relicCore = mesh(new THREE.OctahedronGeometry(0.22, 0), new THREE.MeshStandardMaterial({ color: '#ff5a86', emissive: '#ff1f5a', emissiveIntensity: 2.2, roughness: 0.2, flatShading: true }));
+  const relicCore = mesh(new THREE.OctahedronGeometry(0.22, 0), new THREE.MeshStandardMaterial({ color: '#ffe066', emissive: '#ffb300', emissiveIntensity: 2.2, roughness: 0.2, flatShading: true }));
   relicCore.scale.set(1, 1.5, 1);
   relic.add(relicCore);
-  const relicLight = new THREE.PointLight('#ff4f7e', 6, 5, 2);
+  const relicLight = new THREE.PointLight('#ffc533', 6, 5, 2);
   relic.add(relicLight);
   relic.position.set(PLACES.garden[0] - 0.2, -0.05, PLACES.garden[1] + 0.1);
   scene.add(relic);
