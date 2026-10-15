@@ -523,11 +523,21 @@ export function buildWorld(scene) {
   }
   const garden = new THREE.Group();
   garden.position.set(...[PLACES.garden[0], 0, PLACES.garden[1]]);
-  garden.add(mesh(new THREE.CylinderGeometry(1.6, 1.7, 0.18, 24), mat('#6b4a33'), { pos: [0, 0.03, 0], cast: false }));
+  // A raised bed: a rounded stone rim, light soil, and flowers sitting in little leaf clusters.
+  garden.add(mesh(new THREE.CylinderGeometry(1.6, 1.7, 0.18, 32), mat('#9a7352'), { pos: [0, 0.03, 0], cast: false }));
+  garden.add(mesh(new THREE.TorusGeometry(1.66, 0.14, 10, 48), mat('#d9c6a8'), { pos: [0, 0.13, 0], rot: [Math.PI / 2, 0, 0] }));
+  const leafGeo = new THREE.SphereGeometry(0.13, 10, 6);
   for (let i = 0; i < 10; i++) {
     const a = (i / 10) * Math.PI * 2;
-    garden.add(mesh(new THREE.SphereGeometry(0.18, 10, 8), mat(['#ff6f9c', '#ffd447', '#ff984f'][i % 3]), { pos: [Math.cos(a) * 1.3, 0.35, Math.sin(a) * 1.3] }));
-    garden.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 4), mat('#4f9a37'), { pos: [Math.cos(a) * 1.3, 0.17, Math.sin(a) * 1.3] }));
+    const fx = Math.cos(a) * 1.3, fz = Math.sin(a) * 1.3;
+    garden.add(mesh(new THREE.SphereGeometry(0.18, 12, 10), mat(['#ff6f9c', '#ffd447', '#ff984f'][i % 3]), { pos: [fx, 0.38, fz] }));
+    garden.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 5), mat('#4f9a37'), { pos: [fx, 0.2, fz] }));
+    for (let j = 0; j < 3; j++) {
+      const b = a + (j / 3) * Math.PI * 2 + rr(-0.3, 0.3);
+      garden.add(mesh(leafGeo, mat(j % 2 ? '#6fb84f' : '#5aa844'), {
+        pos: [fx + Math.cos(b) * 0.16, 0.16, fz + Math.sin(b) * 0.16], rot: [0, -b, 0], scale: [1.2, 0.35, 0.7],
+      }));
+    }
   }
   scene.add(garden);
 
