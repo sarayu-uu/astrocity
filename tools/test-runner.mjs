@@ -15,7 +15,7 @@ const load = f => import(pathToFileURL(join(here, '../js/activities', f)).href);
 const { createRunSim, createBot, STEP } = await load('runner-sim.js');
 const { PATTERNS, isObstacle } = await load('runner-patterns.js');
 
-const SPEED = { little: { start: 6, max: 8.5 }, big: { start: 8, max: 12.5 } };
+const SPEED = { little: { start: 7.5, max: 10.5 }, big: { start: 10, max: 15 } };
 const ADAPT_MAX = 1.25;
 let failed = 0;
 

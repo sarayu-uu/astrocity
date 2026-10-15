@@ -129,13 +129,13 @@ export const testRun = {
   hero: 'poppy',
   goal: 'Test run: dodge, jump, duck, catch buns',
   legs: [
-    { length: 140, theme: 'mint', patterns: ['bun-line', 'puff', 'gap', 'puff-buns', 'gap-buns'] },
-    { length: 160, theme: 'lilac', patterns: ['branch', 'wobble', 'sunk', 'puff-gap', 'bun-arc'] },
-    { length: 180, theme: 'peach', patterns: ['wall-jump', 'branch-wobble', 'star-stone', 'zigzag', 'double-gap'] },
+    { length: 175, theme: 'mint', patterns: ['bun-line', 'puff', 'gap', 'puff-buns', 'gap-buns'] },
+    { length: 200, theme: 'lilac', patterns: ['branch', 'wobble', 'sunk', 'puff-gap', 'bun-arc'] },
+    { length: 225, theme: 'peach', patterns: ['wall-jump', 'branch-wobble', 'star-stone', 'zigzag', 'double-gap'] },
   ],
   tune: {
-    little: { speed: { start: 6, max: 8.5 }, breatherEvery: 180 },
-    big: { speed: { start: 8, max: 12.5 }, breatherEvery: 240 },
+    little: { speed: { start: 7.5, max: 10.5 }, breatherEvery: 180 },
+    big: { speed: { start: 10, max: 15 }, breatherEvery: 240 },
   },
   text: {
     hit: ['Oops! Keep going!', 'Wobble! You got this!', 'Up we get!'],

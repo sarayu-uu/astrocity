@@ -213,8 +213,8 @@ starStoneRun: {
   ],
   setPieces: ['bridge1', 'bridge2', 'lastBridge'],
   tune: {
-    little: { speed: { start: 6, max: 8.5 },  jumpWindow: 0.7, duckHold: 0.15 },
-    big:    { speed: { start: 8, max: 12.5 }, jumpWindow: 0.4, duckHold: 0.1 },
+    little: { speed: { start: 7.5, max: 10.5 }, jumpWindow: 0.7, duckHold: 0.15 },
+    big:    { speed: { start: 10, max: 15 },  jumpWindow: 0.4, duckHold: 0.1 },
   },
   text: { /* lines from the story table */ },
 }
@@ -275,8 +275,8 @@ skyPower: {
   ],
   setPieces: ['findSignal', 'crankJam', 'fullPower'],
   tune: {
-    little: { speed: { start: 6, max: 9 },  heightFromLeg: 2, gusts: false, pumps: 5, signalSteps: 2 },
-    big:    { speed: { start: 8, max: 13 }, heightFromLeg: 1, gusts: true,  pumps: 8, signalSteps: 4 },
+    little: { speed: { start: 7.5, max: 11 }, heightFromLeg: 2, gusts: false, pumps: 5, signalSteps: 2 },
+    big:    { speed: { start: 10, max: 16 },  heightFromLeg: 1, gusts: true,  pumps: 8, signalSteps: 4 },
   },
 }
 ```
@@ -357,7 +357,7 @@ Little vs Big numbers (the tune blocks; the adaptive layer moves within these):
 
 | Setting | Little (3–6) | Big (7–12) |
 |---|---|---|
-| Runner speed, start → max (units/s) | 6 → 8.5 (fly: 9) | 8 → 12.5 (fly: 13) |
+| Runner speed, start → max (units/s) | 7.5 → 10.5 (fly: 11) | 10 → 15 (fly: 16) |
 | Jump timing window | 0.7 s | 0.4 s |
 | Duck: drop needed / hold | 18% of torso / 0.15 s | 22% / 0.1 s |
 | Leg length (runner units) | 260 / 300 / 340 | 300 / 360 / 420 |
