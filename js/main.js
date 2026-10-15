@@ -12,6 +12,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { buildWorld } from './world/world.js';
 import { Buddy } from './world/buddies.js';
 import { MotionInput } from './core/input.js';
@@ -50,6 +51,9 @@ const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.6, 0.88);
 composer.addPass(bloom);
+// Edge smoothing: the post-processing chain loses the browser's own anti-aliasing.
+const smaa = new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio());
+composer.addPass(smaa);
 composer.addPass(new OutputPass());
 
 let ao = null;
@@ -81,6 +85,7 @@ const aoReady = import('n8ao').then(({ N8AOPass }) => {
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
   composer.setSize(innerWidth, innerHeight);
+  smaa.setSize(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio());
   camera.aspect = innerWidth / innerHeight;
   camera.fov = camera.aspect < 1 ? 55 : 38;
   camera.updateProjectionMatrix();
@@ -89,6 +94,7 @@ addEventListener('resize', resize);
 resize();
 
 const W = buildWorld(scene);
+W.setToon(false); // smooth shading everywhere, to match the glossy alien props
 const B = {};
 for (const kind of ['poppy', 'nutty', 'lumi', 'mimi', 'zuzu']) {
   B[kind] = new Buddy(kind);
@@ -231,7 +237,7 @@ window.astra = g; // handy for poking at the world from the dev console
 if (new URLSearchParams(location.search).has('debug')) {
   aoReady.then(() => import('three/addons/libs/lil-gui.module.min.js')).then(({ default: GUI }) => {
     const gui = new GUI({ title: 'Look' });
-    const look = { toon: true };
+    const look = { toon: false };
     gui.add(look, 'toon').name('Toon shading').onChange(on => W.setToon(on));
     gui.add(scene.fog, 'near', 0, 1000, 10).name('Fog near');
     gui.add(scene.fog, 'far', 100, 1400, 10).name('Fog far');

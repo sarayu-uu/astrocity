@@ -2,6 +2,7 @@
 // and the far-off islands, waterfalls, railway and observatory that hint at more to discover.
 
 import * as THREE from 'three';
+import { alienTree, alienHouse } from './alien.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
@@ -515,7 +516,7 @@ export function buildWorld(scene) {
   const faceCenter = (g, x, z) => { g.position.set(x, 0, z); g.rotation.y = Math.atan2(-x, -z); };
 
   // Poppy's slightly chaotic house and garden.
-  const poppyHouse = cottage({ wall: '#fff0e0', roof: '#ff6f9c', tilt: 0.08, chimney: true });
+  const poppyHouse = alienHouse({ wall: '#fff0e0', roof: '#ff6f9c', tilt: 0.08, chimney: true });
   faceCenter(poppyHouse, ...PLACES.poppyHouse);
   scene.add(label(poppyHouse, "Poppy's house", "Don't go in my room. It's... organised. In a Poppy way."));
   for (let i = 0; i < 4; i++) {
@@ -558,7 +559,7 @@ export function buildWorld(scene) {
   });
 
   // Nutty's acorn-roofed house next door.
-  const nuttyHouse = cottage({ wall: '#ffe9b5', roof: '#a8743f', r: 1.5, roofH: 2.1 });
+  const nuttyHouse = alienHouse({ wall: '#ffe9b5', roof: '#a8743f', r: 1.5, roofH: 2.1 });
   faceCenter(nuttyHouse, ...PLACES.nuttyHouse);
   scene.add(label(nuttyHouse, "Nutty's house", "Nutty has four kinds of pillow. FOUR."));
 
@@ -587,7 +588,7 @@ export function buildWorld(scene) {
   scene.add(label(fountain, 'The fountain', 'Mimi says the fountain is her audience. It never claps, though.'));
 
   // Bakery with a striped awning and a giant bun sign.
-  const bakery = cottage({ wall: '#ffd9b3', roof: '#ff984f', r: 1.9, h: 2.4, chimney: true });
+  const bakery = alienHouse({ wall: '#ffd9b3', roof: '#ff984f', r: 1.9, h: 2.4, chimney: true });
   faceCenter(bakery, ...PLACES.bakery);
   const aw = awning(2.6, 0.8, '#ff984f', '#fff4e6');
   aw.position.set(0, 2.1, 1.9);
@@ -640,11 +641,11 @@ export function buildWorld(scene) {
   scene.add(label(pond, 'Pond', 'Lumi tried to build a submarine for this pond. It went... down.'));
 
   // The big tree Zuzu naps under, plus scattered trees.
-  const bigTree = tree(PLACES.tree[0], PLACES.tree[1], 1.35, '#5aae45', 3);
+  const bigTree = alienTree(PLACES.tree[0], PLACES.tree[1], 1.35, '#5aae45', 3);
   scene.add(bigTree);
   for (const [x, z, s, c] of [[-18, 6, 1, '#4f9f3e'], [-17, -14, 1.1, '#62b84a'], [8, -17, 1.2, '#ff8fb5'], [-10, -18, 0.9, '#5aae45'],
     [17, -10, 1, '#ffb347'], [-19, 0, 0.8, '#5aae45'], [12, 16, 0.9, '#62b84a'], [-2, 17, 0.9, '#ff8fb5'], [19, -4, 0.8, '#5aae45']]) {
-    scene.add(tree(x, z, s, c, x));
+    scene.add(alienTree(x, z, s, c, x));
   }
 
   // Lamp posts.
@@ -790,7 +791,7 @@ export function buildWorld(scene) {
   // ------------------------------------------------------------- Gate Rock
   const gateIsland = island({ x: 40.5, y: 0, z: BRIDGE_Z, r: 6.2, depth: 14, seed: 9 });
   scene.add(gateIsland);
-  for (let i = 0; i < 4; i++) scene.add(tree(40.5 + rr(-3, 4), BRIDGE_Z + (i % 2 ? 1 : -1) * rr(3, 4.5), rr(0.6, 0.8), '#5aae45', i + 20));
+  for (let i = 0; i < 4; i++) scene.add(alienTree(40.5 + rr(-3, 4), BRIDGE_Z + (i % 2 ? 1 : -1) * rr(3, 4.5), rr(0.6, 0.8), '#5aae45', i + 20));
 
   // The "giant potato": an ancient Starway gate stone, carved with three movement glyphs.
   const gate = new THREE.Group();
@@ -842,7 +843,7 @@ export function buildWorld(scene) {
     const a = rr(0, Math.PI * 2), d = rr(1, 11);
     scene.add(mesh(new THREE.SphereGeometry(rr(0.12, 0.3), 8, 6), glow(['#a7fff0', '#ffe9a8', '#c7b3ff'][i % 3]), { pos: [76 + Math.cos(a) * d, 2.3, -24 + Math.sin(a) * d] }));
   }
-  for (let i = 0; i < 4; i++) scene.add(tree(76 + rr(-8, 8), -24 + rr(-8, 8), rr(1.3, 1.8), '#246b6b', i + 40).translateY(2));
+  for (let i = 0; i < 4; i++) scene.add(alienTree(76 + rr(-8, 8), -24 + rr(-8, 8), rr(1.3, 1.8), '#246b6b', i + 40).translateY(2));
   const forestLight = new THREE.PointLight('#6fffe0', 0, 40, 1.5);
   forestLight.position.set(76, 9, -24);
   scene.add(forestLight);
@@ -861,7 +862,7 @@ export function buildWorld(scene) {
   const farIsland = (o, withFall) => {
     const g = island(o);
     scene.add(g);
-    for (let i = 0; i < 3; i++) g.add(tree(rr(-o.r * 0.5, o.r * 0.5), rr(-o.r * 0.5, o.r * 0.5), rr(0.8, 1.2), ['#5aae45', '#ff8fb5', '#62b84a'][i], o.seed + i));
+    for (let i = 0; i < 3; i++) g.add(alienTree(rr(-o.r * 0.5, o.r * 0.5), rr(-o.r * 0.5, o.r * 0.5), rr(0.8, 1.2), ['#5aae45', '#ff8fb5', '#62b84a'][i], o.seed + i));
     if (withFall) {
       const f = waterfall(withFall, 70);
       const a = Math.atan2(-o.z, -o.x); // face roughly toward the centre of the world
