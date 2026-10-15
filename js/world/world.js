@@ -415,36 +415,43 @@ export function buildWorld(scene) {
   const home = island({ r: 22, depth: 26, seed: 2 });
   scene.add(home);
 
-  // Cobblestone paths, laid as many small irregular stones.
+  // Stepping-stone paths: rings around the fountain, then a tidy trail out to each place.
+  // Each stone is [x, z, size].
   const stones = [];
+  for (const [ring, size] of [[2.4, 1], [3.4, 1.1], [4.5, 1.2], [5.7, 1.05]]) {
+    const count = Math.round((Math.PI * 2 * ring) / 1.15);
+    const turn = rr(0, 1);
+    for (let i = 0; i < count; i++) {
+      const a = ((i + turn + rr(-0.15, 0.15)) / count) * Math.PI * 2;
+      const d = ring + rr(-0.15, 0.15);
+      stones.push([Math.cos(a) * d, Math.sin(a) * d, size * rr(0.85, 1.15)]);
+    }
+  }
+  // Two staggered rows along the line from a to b, about one stride apart.
   const layPath = (ax, az, bx, bz, w = 1.7) => {
     const len = Math.hypot(bx - ax, bz - az);
-    const n = Math.floor(len * w * 2.2);
-    for (let i = 0; i < n; i++) {
-      const k = R(), o = rr(-w / 2, w / 2);
-      const nx = -(bz - az) / len, nz = (bx - ax) / len;
-      stones.push([ax + (bx - ax) * k + nx * o, az + (bz - az) * k + nz * o]);
+    const nx = -(bz - az) / len, nz = (bx - ax) / len;
+    const n = Math.max(2, Math.round(len / 0.95));
+    for (let i = 0; i <= n; i++) {
+      const k = i / n;
+      const o = (i % 2 ? 0.22 : -0.22) * w + rr(-0.08, 0.08);
+      stones.push([ax + (bx - ax) * k + nx * o, az + (bz - az) * k + nz * o, rr(0.85, 1.15)]);
     }
   };
-  for (let i = 0; i < 520; i++) {
-    const a = rr(0, Math.PI * 2), d = Math.sqrt(rr(1.8 * 1.8, 6.5 * 6.5));
-    stones.push([Math.cos(a) * d, Math.sin(a) * d]);
-  }
   const PLACES = {
     poppyHouse: [-11, 5], garden: [-7, 9], nuttyHouse: [-14.5, -2], bakery: [5, -11], market: [11, -3.5],
     theater: [-5.5, -13], pond: [-15, -10], tree: [5, 12], workshop: [15.5, 11.5], bridgeHead: [20.4, 4],
   };
-  layPath(-4, 2, -10, 5.5); layPath(-5, 4, -7, 8.3); layPath(-5, -1, -13, -2); layPath(2, -5, 5, -9);
-  layPath(5, -2, 10, -3); layPath(-2, -5, -5, -11); layPath(5, 3, 15, 4); layPath(14, 4, 20.5, 4, 2);
-  layPath(12, 4.5, 15, 9.8); layPath(3, 5.5, 4.5, 9.5);
+  layPath(-5.4, 2.6, -10, 5.5); layPath(-5, 4, -7, 7.6); layPath(-5.9, -1, -13, -2); layPath(2.6, -5.4, 5, -9);
+  layPath(5.9, -2, 10, -3); layPath(-2.4, -5.6, -5, -11); layPath(5.8, 3, 15, 4); layPath(15, 4, 20.5, 4, 2);
+  layPath(12, 4.5, 15, 9.8); layPath(3.4, 5.6, 4.5, 9.5);
   const isPath = (x, z) => stones.some(([sx, sz]) => (sx - x) ** 2 + (sz - z) ** 2 < 0.9);
-  const cobble = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.26, 0.3, 0.12, 7), new THREE.MeshStandardMaterial({ roughness: 0.95 }), stones.length);
+  const cobble = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.4, 0.45, 0.12, 8), new THREE.MeshStandardMaterial({ roughness: 0.95 }), stones.length);
   const tmp = new THREE.Object3D();
-  stones.forEach(([x, z], i) => {
-    tmp.position.set(x, 0.02, z);
-    tmp.rotation.set(0, rr(0, 3), 0);
-    const s = rr(0.75, 1.15);
-    tmp.scale.set(s, 1, s * rr(0.8, 1.1));
+  stones.forEach(([x, z, size], i) => {
+    tmp.position.set(x, 0, z); // sunk a little: just the top shows above the grass
+    tmp.rotation.set(0, rr(0, Math.PI), 0);
+    tmp.scale.set(size, 1, size * rr(0.75, 1));
     tmp.updateMatrix();
     cobble.setMatrixAt(i, tmp.matrix);
     cobble.setColorAt(i, new THREE.Color().setHSL(rr(0.06, 0.1), rr(0.18, 0.32), rr(0.42, 0.58)));
