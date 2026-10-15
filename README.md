@@ -80,6 +80,9 @@ js/activities/             reusable movement engines (no story text inside)
   runner.js                endless runner in a stage: lanes, jumps, ducks, buns, result card
   runner-sim.js            the runner's rules (seeded, fixed-step, no 3D) and its test bot
   runner-patterns.js       built-in obstacle patterns
+  set-piece.js             a story obstacle fixed with a short list of big moves (also at runner leg ends)
+  set-piece-sim.js         its rules (steps, the "Ready…" gate, help when stuck) and its test bot
+  moves.js                 how a move is counted (hold meters, pumps, following the body), shared by all
   index.js                 the list of engines
 js/chapters/
   index.js                 the list of chapters
@@ -100,6 +103,8 @@ Open the game with `?debug` on the end of the address to get the **Moves** panel
 The **Stages** folder in the `?debug` panel enters and leaves a test stage, and its **×10 enter / leave** checks that memory stays flat (shapes, textures, shader programs).
 
 **Runner test** plays a short run on the test track; tick **Autoplay runs (bot)** to watch the bot play it. `node tools/test-runner.mjs` plays every built-in pattern for Little and Big at the fastest speed the game reaches, with the bot changing lanes as slowly as a child on camera, and fails if any obstacle can't be cleared.
+
+Each leg of the test run ends in a set piece, together using every step type (jump, arms-up hold, step left / right, pumps, pose hold). `node tools/test-set-piece.mjs` plays each step type and checks the rules: nothing finishes without the move, a held move can't carry into the next step, and help comes after 12 s and 25 s without progress. `node tools/test-golden.mjs` plays scripted input through the four original engines and compares every frame with `tools/golden/old-engines.json`, so a change to shared move code that alters them shows up (`--update` saves new results on purpose).
 
 To check a recording without a browser, run `node tools/replay-moves.mjs recording.json`. It prints when each move starts and stops. You can override a threshold, for example `--duckDrop 0.2`.
 

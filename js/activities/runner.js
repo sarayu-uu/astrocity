@@ -7,7 +7,8 @@
 // Activity config:
 //   stage: 'name'                  a stage that provides stage.runner looks (see test-track.js)
 //   hero: 'poppy'                  the buddy who runs
-//   legs: [{ length, theme, patterns: [names] }]
+//   legs: [{ length, theme, patterns: [names], setPiece: 'name' }]
+//   setPieces: { name: {...} }     story obstacles at the end of legs (see set-piece.js)
 //   patterns: { name: {...} }      extra patterns for this chapter (see runner-patterns.js)
 //   tune.little / tune.big: { speed: { start, max }, breatherEvery }
 //   text: { hit: [lines], goal }
@@ -18,6 +19,7 @@ import { sfx } from '../core/audio.js';
 import { saveBest } from '../core/director.js';
 import { createRunSim, createBot, STEP } from './runner-sim.js';
 import { pick } from './common.js';
+import { playSetPiece } from './set-piece.js';
 
 const LANE_W = 2.2;
 const SEG_LEN = 20;
@@ -92,6 +94,17 @@ export default {
             sfx.pop();
           } else if (e.type === 'star') {
             sfx.chime();
+          } else if (e.type === 'legEnd') {
+            // A story obstacle at the end of the leg (the sim keeps 2 s clear around it).
+            const name = a.legs[e.leg % a.legs.length].setPiece;
+            if (name) {
+              const piece = a.setPieces?.[name];
+              if (!piece) throw new Error(`Activity "${a.id}": no set piece "${name}"`);
+              await playSetPiece(g, stage, { helper: a.hero, ...piece }, { hero, leave: props => view.leave(props) });
+              hero.state = 'run';
+              sim.clearAhead(2);
+              acc = 0;
+            }
           } else if (e.type === 'legStart') {
             stage.runner.theme(a.legs[e.leg % a.legs.length].theme);
           } else if (e.type === 'breather') {
@@ -201,10 +214,30 @@ function createView(stage, sim) {
   const stars = instanced(looks.star, 8);
   const tmp = new THREE.Object3D();
   let spin = 0;
+  const leaving = []; // set-piece things scrolling away behind the hero
 
   return {
+    // After a set piece its things stay put on the track, so they slide past as the run goes on.
+    leave(props) {
+      props.leaving = true;
+      leaving.push(props);
+    },
+
     update(dt) {
       spin += dt * 2.5;
+      for (let i = leaving.length - 1; i >= 0; i--) {
+        // (Picked up again by the next set piece before it was gone: let it be.)
+        if (!leaving[i].leaving) {
+          leaving.splice(i, 1);
+          continue;
+        }
+        const root = leaving[i].root;
+        root.position.z += sim.speed * dt;
+        if (root.position.z > VISIBLE.behind + 30) {
+          root.visible = false;
+          leaving.splice(i, 1);
+        }
+      }
       // Ground pieces leapfrog forward as they pass behind the camera.
       const first = Math.floor((sim.dist - VISIBLE.behind) / SEG_LEN);
       segments.forEach((s, i) => {

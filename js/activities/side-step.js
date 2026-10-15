@@ -13,8 +13,7 @@
 
 import { sfx } from '../core/audio.js';
 import { coach, fill, pick } from './common.js';
-
-const AIM = { left: -1, center: 0, right: 1 };
+import { holdMeter, zoneFollower } from './moves.js';
 
 export default {
   id: 'side-step',
@@ -30,20 +29,17 @@ export default {
     g.needsBody = true;
     ui.preview = { zones: true, target: null };
 
-    let aim = startAim;
-    const follow = () => {
-      aim += (AIM[input.zone] - aim) * (1 - Math.exp(-4 * g.dt));
-      target.aim(aim);
-    };
+    const follower = zoneFollower(startAim);
+    const follow = () => target.aim(follower.update(input.zone, g.dt));
 
     // Waits until the child has stood in `zone` for `seconds`.
     const holdIn = async (zone, seconds) => {
-      let held = 0;
-      while (held < seconds) {
+      const meter = holdMeter(seconds);
+      while (!meter.done) {
         await g.frame();
         follow();
-        held = input.zone === zone ? held + g.dt : Math.max(0, held - g.dt * 1.5);
-        ui.setCoachProgress(held / seconds);
+        meter.update(input.zone === zone, g.dt);
+        ui.setCoachProgress(meter.k);
       }
       ui.setCoachProgress(0);
     };
@@ -70,7 +66,7 @@ export default {
 
     // Ease into the final position, so the target ends up where the story needs it.
     ui.preview = null;
-    const from = aim;
+    const from = follower.aim;
     await g.tween(0.8, k => target.aim(from + (finalAim - from) * k));
   },
 

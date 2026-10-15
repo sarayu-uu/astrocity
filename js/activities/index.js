@@ -7,8 +7,10 @@ import sideStep from './side-step.js';
 import armPump from './arm-pump.js';
 import poseMatch from './pose-match.js';
 import runner from './runner.js';
+import setPiece from './set-piece.js';
 
 export const ENGINES = {
+  [setPiece.id]: setPiece,
   [hopStones.id]: hopStones,
   [sideStep.id]: sideStep,
   [armPump.id]: armPump,

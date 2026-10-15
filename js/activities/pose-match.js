@@ -13,6 +13,7 @@
 
 import { sfx } from '../core/audio.js';
 import { coach } from './common.js';
+import { holdMeter } from './moves.js';
 
 // Arm angles a buddy uses to show each pose.
 export const POSE_ARMS = {
@@ -36,12 +37,12 @@ export default {
     for (let i = 0; i < lock.glyphs.length; i++) {
       const kind = lock.glyphs[i];
       coach(g, kind, T.poses[kind]);
-      let hold = 0;
-      while (hold < holdFor) {
+      const meter = holdMeter(holdFor);
+      while (!meter.done) {
         await g.frame();
         lock.setGlyph(i, 0.7 + Math.sin(performance.now() / 200) * 0.3);
-        hold = input.pose === kind ? hold + g.dt : Math.max(0, hold - g.dt * 1.5);
-        ui.setCoachProgress(hold / holdFor);
+        meter.update(input.pose === kind, g.dt);
+        ui.setCoachProgress(meter.k);
       }
       lock.setGlyph(i, 3);
       sfx.chime();

@@ -127,6 +127,14 @@ bridge: [
 
 Each step drives a visible change (a stone rises, a plank slides, a light fills) so the child sees their move doing the work. The existing engines (hop-stones, side-step, arm-pump, pose-match) become set-piece step types; reuse their logic rather than rewriting it.
 
+Built in Phase 4 (`set-piece.js`, rules in `set-piece-sim.js`, shared counting in `moves.js`):
+
+- **Ready gate:** before each step counts, the child returns to neutral (arms down, middle, no pose) with a short "Ready…" beat, so a held move can't fill the next step.
+- **No time limit; help from time without progress** (not total time). About 12 s with no progress: a buddy turns to the child and shows the move. About 25 s: if tracking was poor, "Poppy can't see you"; otherwise what is left is halved (counts never below 1, holds never below 0.3 s). A step never completes by itself.
+- **Smooth scenes:** stages ease each step's progress (`stage.smooth`), so camera jitter never shakes the scene; `does(1, { instant: true })` is the end state for Skip.
+- **Count sounds** rise in pitch with each count (jumps, pumps, quarters of a hold).
+- **Tests:** `tools/test-set-piece.mjs` (rules) and `tools/test-golden.mjs` (the four original engines, frame by frame, unchanged by the refactor).
+
 ### 4. Movement set
 
 | Move | Already in input.js? | Camera detection | Keys |

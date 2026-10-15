@@ -78,7 +78,16 @@ function buildStage(g, def) {
       scene.environment = g.scene.environment;
       scene.environmentIntensity = intensity;
     },
+    // A value that eases toward what it is told, so camera jitter never shakes the scene:
+    //   const lift = stage.smooth(k => { stone.position.y = k })   then lift(k), lift(1, { instant: true })
+    smoothers: [],
+    smooth(apply, rate) {
+      const s = smoothed(apply, rate);
+      stage.smoothers.push(s);
+      return s;
+    },
     update(dt, t) {
+      for (const s of stage.smoothers) s.update(dt);
       def.update?.(stage, dt, t);
       for (const b of Object.values(stage.cast)) b.update(dt, camera);
     },
@@ -90,6 +99,26 @@ function buildStage(g, def) {
   }
   def.build(stage, g);
   return stage;
+}
+
+// The set-piece `does(k, info)` a stage provides: k is eased toward (damped), and `apply(shown,
+// info)` draws it every frame. { instant: true } jumps straight there (Skip, reset).
+export function smoothed(apply, rate = 5) {
+  let shown = 0, target = 0, info = {};
+  const fn = (k, opts = {}) => {
+    target = k;
+    info = opts;
+    if (opts.instant) {
+      shown = k;
+      apply(shown, info);
+    }
+  };
+  fn.update = dt => {
+    shown += (target - shown) * (1 - Math.exp(-rate * dt));
+    if (Math.abs(target - shown) < 1e-4) shown = target;
+    apply(shown, info);
+  };
+  return fn;
 }
 
 // Poppy's stone glows bright for a moment: it is what carries the buddies between places.

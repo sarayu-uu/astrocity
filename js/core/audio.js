@@ -81,6 +81,11 @@ export const sfx = {
   rumble() { noise(now(), 1.4, 0.5, 220); },
   clunk() { const t = now(); noise(t, 0.2, 0.35, 900); tone(110, t, 0.2, { type: 'square', vol: 0.06, slideTo: 60 }); },
   charge(k) { tone(220 + k * 500, now(), 0.3, { type: 'sawtooth', vol: 0.05, slideTo: 260 + k * 700 }); },
+  // One count in a set piece (a jump, a pump, a quarter of a hold): each one a note higher.
+  count(n) {
+    const up = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28];
+    tone(midi(67 + up[Math.min(n, up.length - 1)]), now(), 0.35, { type: 'sine', vol: 0.2 });
+  },
   chime() { const t = now(); [76, 83, 88].forEach((n, i) => tone(midi(n), t + i * 0.08, 0.9, { vol: 0.12 })); },
   whoosh() { noise(now(), 1.2, 0.4, 1800); },
   // Runner cues: one sound per move, so kids learn them by ear. dir: -1 left, 1 right.

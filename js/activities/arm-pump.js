@@ -10,6 +10,7 @@
 
 import { sfx } from '../core/audio.js';
 import { coach, pick } from './common.js';
+import { pumpCounter } from './moves.js';
 
 export default {
   id: 'arm-pump',
@@ -27,13 +28,11 @@ export default {
     if (hero) hero.state = 'cheer';
 
     let pumps = 0;
-    let up = false;
+    const pump = pumpCounter();
     machine.setCharge(0);
     while (pumps < need) {
       await g.frame();
-      if (!up && input.armsUp) up = true;
-      else if (up && input.armsDown) {
-        up = false;
+      if (pump.update(input)) {
         pumps++;
         machine.kick();
         machine.setCharge(pumps / need);

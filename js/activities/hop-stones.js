@@ -17,6 +17,7 @@
 
 import { sfx } from '../core/audio.js';
 import { coach } from './common.js';
+import { holdMeter } from './moves.js';
 
 export default {
   id: 'hop-stones',
@@ -40,7 +41,7 @@ export default {
 
     let at = -1;
     let hopping = false;
-    let lift = 0;
+    const lift = holdMeter(liftTime, { fraction: true, drain: 0.6 });
     let liftShown = false;
     const n = bridge.stones.length;
     const targetOf = i => (i >= n ? bridge.landing.clone() : bridge.top(i));
@@ -60,13 +61,13 @@ export default {
           sfx.wobble();
         }
         const s = bridge.stones[next];
-        lift = input.armsUp ? Math.min(1, lift + g.dt / liftTime) : Math.max(0, lift - g.dt * 0.6);
-        s.userData.raise = lift * 0.85;
-        g.ui.setCoachProgress(lift);
-        if (lift >= 1) {
+        lift.update(input.armsUp, g.dt);
+        s.userData.raise = lift.k * 0.85;
+        g.ui.setCoachProgress(lift.k);
+        if (lift.done) {
           s.userData.raise = 1;
           s.userData.sunk = false;
-          lift = 0;
+          lift.reset();
           liftShown = false;
           sfx.rumble();
           sfx.chime();
