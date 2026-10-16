@@ -115,9 +115,17 @@ const STAGE_MUSIC = {
   'sky-river': { beat: 60 / 112, bass: [48, 48, 45, 43], notes: [72, 74, 76, 79, 81, 84, 86] },
   // Above the clouds: slower and dreamier, with a lift.
   'sky-above': { beat: 60 / 96, bass: [50, 47, 43, 45], notes: [74, 76, 79, 81, 83, 86, 88] },
+  // The crystal arena: a dance beat that starts sparse and gains layers as the rings wake.
+  'crystal-arena': { beat: 60 / 108, bass: [45, 45, 48, 43], notes: [69, 72, 74, 76, 79, 81, 84], layered: true },
 };
 let stageTimer = null;
 let stageBus = null;
+let stageLayer = 0;
+
+// How many extra layers a layered stage song plays (0 = just the beat; 3 = everything).
+export function stageMusicLayer(n) {
+  stageLayer = n;
+}
 
 export function stageMusic(name) {
   const c = audio();
@@ -147,7 +155,10 @@ export function stageMusic(name) {
       if (step % 8 === 0) tone(midi(song.bass[bar % song.bass.length]), next, song.beat * 3.6, { type: 'sine', vol: 0.13, bus });
       if (step % 2 === 0) tone(midi(song.bass[bar % song.bass.length] + 24), next, 0.18, { type: 'triangle', vol: 0.035, bus });
       const n = song.notes[(step * 3 + bar * 2) % song.notes.length];
-      if (step % 8 !== 7) tone(midi(n), next, song.beat * 0.9, { vol: 0.05, bus });
+      const layers = song.layered ? stageLayer : 3;
+      if (step % 8 !== 7 && (layers >= 1 || step % 4 === 0)) tone(midi(n), next, song.beat * 0.9, { vol: 0.05, bus });
+      if (song.layered && layers >= 2 && step % 2 === 1) tone(midi(n + 12), next, 0.15, { type: 'sine', vol: 0.03, bus });
+      if (song.layered && layers >= 3 && step % 8 === 4) noise(next, 0.12, 0.08, 6000);
       next += song.beat / 2;
       step++;
     }

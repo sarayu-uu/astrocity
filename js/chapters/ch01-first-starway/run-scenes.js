@@ -69,6 +69,50 @@ export async function skyPowerStart(g, stage) {
   await rise;
 }
 
+// ---- Gate Trials -----------------------------------------------------------------------
+
+const GT = LINES.gateTrials;
+
+// Inside the gate: Mimi welcomes everyone to her crystal stage.
+export async function gateTrialsStart(g, stage) {
+  const { mimi } = stage.crystal.cast;
+  mimi.state = 'dance';
+  for (const line of GT.start) await say(g, line);
+  g.ui.hideDialogue();
+  mimi.state = 'idle';
+}
+
+// A crystal lock shatters into light.
+export async function lockShatters(g, stage, props) {
+  sfx.rumble();
+  await props.shatter(g);
+}
+
+// The moon lock: Nutty does it with the wrong arm, and everyone laughs.
+export async function moonGag(g, stage) {
+  const { nutty, poppy, mimi } = stage.crystal.cast;
+  nutty.state = 'pose';
+  nutty.pose = [2.6, 0.35]; // the wrong arm up
+  await say(g, GT.lockMoon.oops);
+  poppy.state = 'cheer';
+  mimi.state = 'cheer';
+  sfx.pop();
+  await say(g, GT.lockMoon.laugh);
+  g.ui.hideDialogue();
+  for (const b of [nutty, poppy, mimi]) b.state = 'idle';
+}
+
+// The whole arena wakes up.
+export async function gateTrialsEnd(g, stage) {
+  const { mimi, poppy, nutty } = stage.crystal.cast;
+  await stage.crystal.wakeAll(g);
+  for (const b of [mimi, poppy, nutty]) b.state = 'dance';
+  await say(g, GT.awake);
+  g.ui.hideDialogue();
+}
+
+// ---- Sky Power (end) ---------------------------------------------------------------------
+
 // The beam shoots across the sky to the gate.
 export async function skyPowerEnd(g, stage) {
   stage.sky.cast.lumi.state = 'cheer';

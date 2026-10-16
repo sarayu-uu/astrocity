@@ -20,7 +20,7 @@ export default {
     { id: 'gate-rock', name: 'The big potato', scene: S.gateRock },
     { id: 'sky-power', name: 'Sky Power', activity: A.skyPower },
     { id: 'beam', name: 'The gate wakes up', scene: S.beam },
-    { id: 'gate-poses', name: 'Copy the poses', activity: A.gatePoses },
+    { id: 'gate-trials', name: 'Gate Trials', activity: A.gateTrials },
     { id: 'starway', name: 'The Starway comes back', scene: S.starway },
     { id: 'free-roam', name: 'Play in Star Square', scene: S.freeRoam, skip: false },
   ],

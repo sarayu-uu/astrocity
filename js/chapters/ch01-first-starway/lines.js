@@ -146,6 +146,38 @@ export const LINES = {
     result: 'Full power!',
   },
 
+  // Gate Trials (inside the sleeping gate). Mimi hosts; `auto` lines move on by themselves.
+  gateTrials: {
+    goal: 'Copy Mimi to wake the gate!',
+    start: [
+      ['mimi', 'Welcome to my crystal stage, darlings!', { auto: 3 }],
+      ['mimi', 'Watch me, then copy me! Every move lights a tile!', { auto: 3.4 }],
+    ],
+    hit: ['Bravo!', 'Yes, darling!', 'Fabulous!', 'Wonderful!', 'Superstar!', 'Gorgeous!'],
+    miss: 'Nearly! Try this one!',
+    struggle: "Let's do it together, slowly!",
+    rounds: ['The first ring is awake!', 'Two rings! Look at them shine!', 'All three rings! Bravo!'],
+    lockStar: {
+      intro: [['mimi', 'A crystal lock! Make a star to open it!', { auto: 3 }]],
+      star: 'Make a star! Hold it!',
+    },
+    lockBridge: {
+      intro: [['mimi', 'Another lock! Now a bridge!', { auto: 2.8 }]],
+      bridge: 'Make a bridge! Hold it!',
+      then: 'Now a bridge, then a star!',
+    },
+    lockMoon: {
+      intro: [['mimi', 'The last lock: the moon!', { auto: 2.8 }]],
+      moon: 'Make a moon! One arm up!',
+      oops: ['nutty', 'Am I a moon?', { auto: 2.4 }],
+      laugh: ['poppy', 'Ha ha! Other arm, Nutty!', { auto: 2.6 }],
+      all: 'All three: star, bridge, moon!',
+    },
+    open: ['Open!', 'Click!', 'It opens!'],
+    awake: ['mimi', 'The gate is awake! Bravo!', { auto: 3.5 }],
+    result: 'The gate is awake!',
+  },
+
   beam: {
     pictures: ['poppy', 'The gate has pictures. They look like poses!'],
     copy: ['mimi', 'Poses? I love poses! Copy the pictures, darlings!'],

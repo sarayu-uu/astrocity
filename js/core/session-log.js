@@ -139,7 +139,7 @@ export function summarize(session) {
   for (const e of session.events) {
     switch (e.type) {
       case 'activity.start':
-        a = { id: e.id, age: e.age, play: e.play, start: e.t, legs: [], bridges: [], hints: {}, trackingDrops: 0, pauses: 0, pausedSeconds: 0, fps: [] };
+        a = { id: e.id, age: e.age, play: e.play, start: e.t, legs: [], bridges: [], cards: {}, rounds: [], hints: {}, trackingDrops: 0, pauses: 0, pausedSeconds: 0, fps: [] };
         activities.push(a);
         break;
       case 'leg.start':
@@ -178,6 +178,18 @@ export function summarize(session) {
         break;
       case 'bridge.end':
         if (bridge) bridge.seconds = r1(e.t - bridge.start);
+        break;
+      // Gate Trials: hits and misses per card type, and each round's tiles (# won, . missed).
+      case 'card.hit':
+      case 'card.miss':
+        if (a) {
+          const c = (a.cards[e.card] ??= { hits: 0, misses: 0 });
+          if (e.type === 'card.hit') c.hits++;
+          else c.misses++;
+        }
+        break;
+      case 'round.end':
+        if (a) a.rounds.push({ round: e.round, tiles: (e.tiles ?? []).map(x => (x ? '#' : '.')).join(''), at: e.t });
         break;
       case 'tracking.drop':
         if (a) a.trackingDrops++;

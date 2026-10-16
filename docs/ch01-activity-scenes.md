@@ -379,6 +379,18 @@ gateTrials: {
 
 **Done when:** squat, lean and freeze are detected reliably for both age groups in a normal living room; the moon gag still plays; Skip and Continue leave the gate unlocked exactly as `gatePoses` does now.
 
+**As built (Phase 7).** Config `gateTrials` in `activities.js` (replaces Copy the Poses); engine `js/activities/trials.js` with rules in `trials-sim.js`; stage `js/stages/crystal-arena.js`; story beats in `run-scenes.js`.
+
+- **Rounds of 8 cards:** 5 active, 1 Freeze (rest), 1 Mimi's choice, 1 Dance Party (6–8 s free dance to the music, never judged, always a hit; the ring's tiles twinkle).
+- **Each card:** a short "Ready…" (back to neutral), Mimi's demo (longer for cards with several parts), then the child's window. Window time only runs while the body is tracked, so losing tracking pauses a card and never passes it; Freeze only counts stillness while tracked.
+- **Step and Lean:** Mimi demos mirrored, like a dance teacher; the arrow shows the child's own side. A browser check confirms the arrow, Mimi's movement on screen and the accepted input agree, for both sides.
+- **Big jumps:** 2–3 jumps counted anywhere in the window (not on a beat).
+- **Help:** after 3 misses in a row, the next card's window is doubled and Mimi demos twice; if tracking was weak, the "Poppy can't see you" coach shows instead of a pep talk.
+- **Round end:** any dark tiles light in the celebration, so every ring ends fully lit; stars (≥60% / ≥85% of judged cards) and score use the real hit rate. Combos (Big) raise the score multiplier.
+- **Poppy and Nutty** watch Mimi during her demo and mirror the child only in the child's turn; in the locks they copy the pose.
+- **Locks:** star; bridge then bridge + star; moon (Nutty's wrong-arm gag), then star, bridge, moon. Each shatters into light.
+- **Length** (`tools/test-games.mjs`): 2.6–3.0 min for a perfect player, 3.4–3.8 min for a slower simulated child (misses about 1 card in 6), Little and Big alike: under the 6–9 min target. Knobs: more cards per round, a fourth round, or longer demos and Dance Party.
+
 ## Pacing and session length
 
 A typical Little run lands near 29 minutes, about two-thirds of it moving; Big kids run faster but face longer legs and more steps, so they land in the same range. Each game stops at its progress goal (see Decisions); Keep going (endless mode) after any game takes a session past 30 minutes for kids who want more.

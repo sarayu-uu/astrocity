@@ -14,6 +14,7 @@
 //     intro: [[who, text, opts]],      lines before the steps (they move on by themselves)
 //     after(g, stage, props, hero),    a story beat once the steps are done, before the cheer
 //   }
+//   A step may also have after(g, stage, props, hero): a beat once that step is done.
 //
 // What the stage's set-piece builder returns:
 //   {
@@ -82,7 +83,7 @@ export default {
 // Plays one set piece in `stage`. `leave(props)` takes the scene's things away afterwards (the
 // runner scrolls them past); without it they are just hidden. `keepHero` leaves the hero where
 // it is (riding Lumi's flying dish) instead of standing it at the start.
-export async function playSetPiece(g, stage, piece, { hero, leave, keepHero = false } = {}) {
+export async function playSetPiece(g, stage, piece, { hero, leave, keepHero = false, heroState = keepHero ? 'sit' : 'idle' } = {}) {
   const { ui, input } = g;
   const props = setPieceProps(stage, piece.scene);
   const helper = (piece.helper && stage.cast[piece.helper]) || hero;
@@ -101,7 +102,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave, keepHero = fa
   if (hero) {
     if (!keepHero) hero.place(0, 0).faceNow(0, -10);
     hero.airborne = false;
-    hero.state = keepHero ? 'sit' : 'idle';
+    hero.state = heroState;
   }
   ui.moveCue(null);
   props.enter?.();
@@ -155,6 +156,11 @@ export async function playSetPiece(g, stage, piece, { hero, leave, keepHero = fa
             ui.setCoachProgress(0);
             sfx.chime();
             if (hero) ui.bark(hero, e.step.done ?? pick(DONE_LINES, e.index), 1.4);
+            // A step can have its own story beat once it's done (e.g. Nutty's moon gag).
+            if (e.step.after) {
+              ui.hideCoach();
+              await e.step.after(g, stage, props, hero);
+            }
             break;
           case 'demo':
             if (helper && !demoing) {
@@ -183,7 +189,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave, keepHero = fa
       }
 
       // The scene follows the step's progress (the stage eases it, so jitter doesn't show).
-      if (sim.phase === 'move' && sim.step === stepBefore) doesOf(sim.step)?.(sim.progress, { aim: sim.aim });
+      if (sim.phase === 'move' && sim.step === stepBefore) doesOf(sim.step)?.(sim.progress, { aim: sim.aim, want: sim.want });
       ui.setCoachProgress(sim.phase === 'move' ? sim.progress : 0);
     }
 

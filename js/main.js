@@ -197,7 +197,7 @@ function renderStory() {
   const games = $('#story-games');
   games.innerHTML = '';
   chapter.steps.forEach((step, i) => {
-    if (step.activity?.engine !== 'runner') return;
+    if (!['runner', 'trials'].includes(step.activity?.engine)) return;
     const b = document.createElement('button');
     b.textContent = step.name;
     // Same as replaying a part: the title then offers "Continue · <game>".

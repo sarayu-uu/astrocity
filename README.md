@@ -23,11 +23,11 @@ Chapter 1 is a list of steps in [js/chapters/ch01-first-starway/chapter.js](js/c
 | 5 | The big potato | scene | |
 | 6 | Sky Power | game · `runner` fly mode above the clouds, 3 moments | step, arms up / down, pumps, star, lean (Big) |
 | 7 | The gate wakes up | scene | |
-| 8 | Copy the poses | activity · `pose-match` | star, bridge, moon |
+| 8 | Gate Trials | game · `trials` in the crystal arena: 3 rounds of 8 "copy Mimi" cards, 3 crystal locks | jump, squat, lean, freeze, step, reach, poses, free dance |
 | 9 | The Starway comes back | scene | |
 | 10 | Play in Star Square | free play | |
 
-The games have stars, a score and a best score, but no fail states: a missed obstacle is a stumble and the run goes on. If the child steps out of view, play pauses until they come back. The original island activities (Cross the Stones, Aim the Dish, Turn the Sky Crank) are still in `activities.js` and can be put back in `chapter.js`.
+The games have stars, a score and a best score, but no fail states: a missed obstacle is a stumble and the run goes on. If the child steps out of view, play pauses until they come back. The original island activities (Cross the Stones, Aim the Dish, Turn the Sky Crank, Copy the Poses) are still in `activities.js` and can be put back in `chapter.js`.
 
 **Story controls (every chapter gets these):**
 
@@ -73,6 +73,7 @@ js/world/
 js/stages/                 activity stage worlds
   sky-river.js             the Star Stone Run: river canyon, stone lanes, obstacle looks, three bridges
   sky-above.js             Sky Power: the sky above the clouds, Lumi's flying dish, three moments
+  crystal-arena.js         Gate Trials: the crystal floor's tile rings, Mimi's stage, three crystal locks
   test-stage.js, test-track.js   plain stages for ?debug tests
 js/activities/             reusable movement engines (no story text inside)
   hop-stones.js            jump across drifting stones, lift a sunken one
@@ -82,6 +83,7 @@ js/activities/             reusable movement engines (no story text inside)
   runner.js                endless runner in a stage: lanes, jumps, ducks, buns, result card
   runner-sim.js            the runner's rules (seeded, fixed-step, no 3D) and its test bot
   runner-patterns.js       built-in obstacle patterns
+  trials.js                "copy me" card rounds with a host (Gate Trials); rules in trials-sim.js
   set-piece.js             a story obstacle fixed with a short list of big moves (also at runner leg ends)
   set-piece-sim.js         its rules (steps, the "Ready…" gate, help when stuck) and its test bot
   moves.js                 how a move is counted (hold meters, pumps, following the body), shared by all
@@ -115,7 +117,7 @@ Each leg of the test run ends in a set piece, together using every step type (ju
 
 **Jump to a step:** add `?step=<id>` to the address (ids in `chapter.js`), e.g. `?step=stone-run` for the Star Stone Run, or `?debug&step=stone-run` to have the debug panel too. Earlier steps are fast-forwarded, so the world is set up right.
 
-`node tools/test-games.mjs` plays Chapter 1's movement games (Star Stone Run, Sky Power) with their real config for Little and Big, and reports each leg's time and each game's length, for a perfect player and a slower child (`--game skyPower` for one game, `--legSeconds 95` to try a longer leg time).
+`node tools/test-trials.mjs` checks every Gate Trials card for Little and Big (hits with the move, misses without it, freeze only while tracked, help after 3 misses, the ready gate). `node tools/test-games.mjs` plays Chapter 1's movement games (Star Stone Run, Sky Power, Gate Trials) with their real config for Little and Big, and reports each leg's time and each game's length, for a perfect player and a slower child (`--game skyPower` for one game, `--legSeconds 95` to try a longer leg time).
 
 To check a recording without a browser, run `node tools/replay-moves.mjs recording.json`. It prints when each move starts and stops. You can override a threshold, for example `--duckDrop 0.2`.
 

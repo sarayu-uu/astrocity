@@ -16,6 +16,7 @@ globalThis.window = {};
 const load = f => import(pathToFileURL(join(here, '..', f)).href);
 const { createRunSim, createBot, STEP } = await load('js/activities/runner-sim.js');
 const { createSetPieceSim, createSetPieceBot } = await load('js/activities/set-piece-sim.js');
+const { createTrialsSim, createTrialsBot } = await load('js/activities/trials-sim.js');
 const { ACTIVITIES } = await load('js/chapters/ch01-first-starway/activities.js');
 const { LINES } = await load('js/chapters/ch01-first-starway/lines.js');
 
@@ -36,6 +37,52 @@ const LEG_SECONDS = arg('--legSeconds') ? Number(arg('--legSeconds')) : null;
 const only = arg('--game');
 if (LEG_SECONDS) console.log(`Trying legSeconds = ${LEG_SECONDS}`);
 let failed = 0;
+
+// ---- Gate Trials (cards, not a runner) -----------------------------------------------------
+const GT = LINES.gateTrials;
+function trialsLengths() {
+  const run = ACTIVITIES.gateTrials;
+  const totals = { expert: [], child: [] };
+  const start = autoTime(GT.start), end = 1.2 + autoTime([GT.awake]);
+  console.log(`\n==== ${run.label} ====`);
+  // "expert" copies each card 0.5 s into its window; "child" takes 1.5 s, moves 2x slower and
+  // misses about 1 card in 6 (which brings help after 3 misses in a row now and then).
+  for (const [who, play] of [['expert', { delay: 0.5, pace: 1, miss: 0 }], ['child', { delay: 1.5, pace: 2, miss: 0.17 }]]) {
+    console.log(`${who}:`);
+    for (const age of ['little', 'big']) {
+      for (const seed of [1, 2, 3]) {
+        const tune = { ...run.tune?.all, ...run.tune?.[age] };
+        const sim = createTrialsSim({ age, seed, rounds: run.rounds, tune: tune.cards, windowScale: run.windowScale });
+        const bot = createTrialsBot(sim, { ...play, seed });
+        const roundTimes = [], lockTimes = [];
+        let t = 0, roundT = 0, celebrate = 0;
+        while (sim.phase !== 'done' && t < 1200) {
+          sim.update(bot(STEP), STEP);
+          t += STEP;
+          roundT += STEP;
+          for (const e of sim.events) {
+            if (e.type !== 'roundEnd') continue;
+            roundTimes.push(roundT);
+            roundT = 0;
+            celebrate += e.tiles.filter(x => !x).length * 0.12 + 2.0; // dark tiles light, ring wakes
+            const lock = run.locks[e.round];
+            const gag = lock.steps.some(s => s.after) ? autoTime([GT.lockMoon.oops, GT.lockMoon.laugh]) : 0;
+            lockTimes.push(playPiece(lock, age, { delay: play.delay * 2, pace: play.pace }) + SHOT + CHEER + 1.2 + gag + autoTime(lock.intro ?? []));
+          }
+          sim.events.length = 0;
+          if (sim.phase === 'roundEnd') sim.nextRound();
+        }
+        const total = start + roundTimes.reduce((s, x) => s + x, 0) + celebrate + lockTimes.reduce((s, x) => s + x, 0) + end;
+        const ok = sim.phase === 'done' && total <= 9 * 60;
+        totals[who].push(total);
+        if (!ok) failed++;
+        console.log(`${ok ? 'PASS' : 'FAIL'}  ${age.padEnd(6)} seed ${seed}  rounds ${roundTimes.map(x => x.toFixed(0)).join(' / ')} s, locks ${lockTimes.map(x => x.toFixed(0)).join(' / ')} s, cards ${sim.stats.hits}/${sim.judged} (${(sim.hitRate * 100).toFixed(0)}%), stars ${sim.starsEarned()}  =>  ${(total / 60).toFixed(1)} min`);
+      }
+    }
+  }
+  const range = list => `${(Math.min(...list) / 60).toFixed(1)}-${(Math.max(...list) / 60).toFixed(1)} min`;
+  console.log(`Totals: expert ${range(totals.expert)}, child ${range(totals.child)} (target 6-9 min)`);
+}
 
 for (const [key, story] of Object.entries(GAMES)) {
   if (only && only !== key) continue;
@@ -85,6 +132,8 @@ for (const [key, story] of Object.entries(GAMES)) {
   const range = list => `${(Math.min(...list) / 60).toFixed(1)}-${(Math.max(...list) / 60).toFixed(1)} min`;
   console.log(`Totals: expert ${range(totals.expert)}, child ${range(totals.child)} (target 6-8 min for a child)`);
 }
+
+if (!only || only === 'gateTrials') trialsLengths();
 
 // One set piece played by the set-piece bot.
 function playPiece(piece, age, play) {

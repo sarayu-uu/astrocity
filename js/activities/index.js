@@ -8,8 +8,10 @@ import armPump from './arm-pump.js';
 import poseMatch from './pose-match.js';
 import runner from './runner.js';
 import setPiece from './set-piece.js';
+import trials from './trials.js';
 
 export const ENGINES = {
+  [trials.id]: trials,
   [setPiece.id]: setPiece,
   [hopStones.id]: hopStones,
   [sideStep.id]: sideStep,

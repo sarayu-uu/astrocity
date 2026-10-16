@@ -16,6 +16,7 @@ import * as S from './run-scenes.js';
 
 const R = LINES.starStoneRun;
 const P = LINES.skyPower;
+const G = LINES.gateTrials;
 
 export const ACTIVITIES = {
   // Star Stone Run: a runner game down the Sky River (replaces Cross the Stones in chapter.js).
@@ -161,6 +162,57 @@ export const ACTIVITIES = {
       g.W.crank.turnDish(0);
       g.W.crank.setCharge(1);
       g.B.lumi.state = 'work';
+    },
+  },
+
+  // Gate Trials: copy Mimi inside the sleeping gate (replaces Copy the Poses). Rounds of 8 cards:
+  // 5 active, 1 Freeze (a rest), 1 Mimi's choice, 1 Dance Party (never judged). A crystal lock
+  // after each round. Length knobs: more cards per round, or a fourth round.
+  gateTrials: {
+    id: 'ch01.gate-trials',
+    label: 'Chapter 1 · Gate Trials',
+    engine: 'trials',
+    stage: 'crystal-arena',
+    host: 'mimi',
+    copycats: ['poppy', 'nutty'],
+    place: ['Inside the Gate', 'The crystal stage'],
+    goal: G.goal,
+    rounds: [
+      { cards: ['jump', 'step', 'reach', 'jump', 'step', 'freeze', 'choice', 'dance'] },
+      { cards: ['squat', 'lean', 'jump', 'squat', 'lean', 'freeze', 'choice', 'dance'] },
+      { cards: ['pose', 'squat', 'lean', 'step', 'reach', 'freeze', 'choice', 'dance'] },
+    ],
+    windowScale: [1, 1, 0.85], // round 3 a little faster
+    locks: [
+      {
+        scene: 'lockStar', intro: G.lockStar.intro, cheer: G.open[0], after: S.lockShatters,
+        steps: [{ move: 'pose', sequence: ['star'], hold: { little: 0.8, big: 1.3 }, text: G.lockStar.star, does: 'glow' }],
+      },
+      {
+        scene: 'lockBridge', intro: G.lockBridge.intro, cheer: G.open[1], after: S.lockShatters,
+        steps: [
+          { move: 'pose', sequence: ['bridge'], hold: { little: 0.8, big: 1.3 }, text: G.lockBridge.bridge, does: 'glow' },
+          { move: 'pose', sequence: ['bridge', 'star'], hold: { little: 0.8, big: 1.0 }, text: G.lockBridge.then, does: 'glow' },
+        ],
+      },
+      {
+        scene: 'lockMoon', intro: G.lockMoon.intro, cheer: G.open[2], after: S.lockShatters,
+        steps: [
+          { move: 'pose', sequence: ['moon'], hold: { little: 0.8, big: 1.3 }, text: G.lockMoon.moon, does: 'glow', after: S.moonGag },
+          { move: 'pose', sequence: ['star', 'bridge', 'moon'], hold: { little: 0.8, big: 1.0 }, text: G.lockMoon.all, does: 'glow' },
+        ],
+      },
+    ],
+    beats: { start: S.gateTrialsStart, end: S.gateTrialsEnd },
+    tune: {
+      little: { cards: { window: 3.5, demo: 1.8, poseHold: 0.8, freeze: 2, squatHold: 0.6, reachHold: 1 } },
+      big: { cards: { window: 2.2, demo: 1.2, poseHold: 1.3, freeze: 3, squatHold: 1, reachHold: 1 } },
+    },
+    text: { hit: G.hit, miss: G.miss, struggle: G.struggle, rounds: G.rounds, goal: G.result },
+    // The island after this game (also for Skip and Continue): the gate's pictures all lit,
+    // exactly as Copy the Poses left it.
+    islandEnd(g) {
+      g.W.gate.glyphs.forEach((_, i) => g.W.gate.setGlyph(i, 3));
     },
   },
 
