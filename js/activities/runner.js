@@ -36,7 +36,7 @@ const LANE_W = 2.2;
 const SEG_LEN = 20;
 const SEG_OVERHANG = 8; // how far a track piece's scenery can reach past its own ends
 const POOL = { block: 10, gap: 5, wobble: 5, high: 5, sunk: 5, rock: 5, arch: 5, gust: 4, ring: 8 };
-const VISIBLE = { behind: 8, ahead: 90 }; // track distance drawn around the hero
+const VISIBLE = { behind: 8, ahead: 130 }; // track distance drawn around the hero
 const JUMP_HEIGHT = 1.6;
 
 // The child's body (or keys) as the sim's input. `jump` only on the first step of a frame.

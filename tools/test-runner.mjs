@@ -57,7 +57,7 @@ for (const age of ['little', 'big']) {
 }
 
 console.log('\nPilot mode (steer with wings), every lane pattern at the fastest speed, steered like a child on camera:');
-const PILOT_SPEED = { little: { start: 9.5, max: 13.5 }, big: { start: 12.5, max: 19 } };
+const PILOT_SPEED = { little: { start: 14, max: 20 }, big: { start: 18, max: 26 } };
 const PILOT = ['spark-line', 'spark-weave', 'storm', 'storm-sparks', 'ring', 'storm-ring', 'storm-wall', 'zigzag', 'slalom', 'ring-chain', 'puff-buns', 'star-stone'];
 for (const age of ['little', 'big']) {
   for (const name of PILOT) {

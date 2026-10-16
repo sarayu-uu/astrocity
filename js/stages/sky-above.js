@@ -119,18 +119,34 @@ export default {
         return g;
       },
       obstacle: {
-        // Change lane: a dark storm cloud in one lane, top to bottom, with a lightning bolt.
+        // Change lane: a storm cloud in one lane with a lightning bolt. Kept low and compact (at
+        // the dish's height, not a tall tower), and it fades see-through as it nears the camera,
+        // so it never hides the way ahead.
         block() {
           const g = new THREE.Group();
-          const m = mat('#5d5778', { emissive: '#3c3560', emissiveIntensity: 0.3 });
-          for (const [x, y, s] of [[0, 1.2, 1.0], [0.3, 2.6, 1.1], [-0.3, 3.9, 0.95], [0.1, 5.0, 0.7]]) {
-            g.add(outlined(new THREE.SphereGeometry(s, 18, 12), m, x, y, 0, 1.08));
+          const m = mat('#7d73a8', { emissive: '#4a3f80', emissiveIntensity: 0.35, transparent: true });
+          const om = new THREE.MeshBasicMaterial({ color: OUTLINE_COLOR, side: THREE.BackSide, transparent: true });
+          for (const [x, y, s] of [[0, 1.3, 0.85], [-0.45, 1.05, 0.6], [0.45, 1.1, 0.65], [0.05, 2.0, 0.6]]) {
+            const p = new THREE.Group();
+            p.position.set(x, y, 0);
+            const ball = mesh(new THREE.SphereGeometry(s, 18, 12), m);
+            const rim = new THREE.Mesh(ball.geometry, om);
+            rim.scale.setScalar(1.08);
+            p.add(ball, rim);
+            g.add(p);
           }
-          const bolt = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.6, 0.16), new THREE.MeshBasicMaterial({ color: '#fff27a' }));
-          bolt.position.set(0.15, 0.6, 0.7);
+          const boltMat = new THREE.MeshBasicMaterial({ color: '#fff27a', transparent: true });
+          const bolt = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.0, 0.14), boltMat);
+          bolt.position.set(0.15, 0.4, 0.6);
           bolt.rotation.z = 0.35;
           g.add(bolt);
-          g.userData.animate = spin => { bolt.visible = Math.sin(spin * 7) > -0.2; };
+          g.userData.animate = spin => {
+            bolt.visible = Math.sin(spin * 7) > -0.2;
+            // Near the dish and past it (toward the camera): fade to see-through.
+            const near = Math.max(0, Math.min(1, (g.position.z + 6) / 8));
+            m.opacity = om.opacity = boltMat.opacity = 1 - near * 0.85;
+            m.depthWrite = near < 0.1;
+          };
           return g;
         },
         // Fly high: bright crystal rocks across the low path.
@@ -237,12 +253,42 @@ export default {
     dish.position.set(0, HEIGHTS.low, 0);
     scene.add(dish);
 
+    // Speed: thin streaks of light rushing past, and the view widening a little as the dish goes
+    // faster (one batch of streaks, reused).
+    const STREAKS = 60;
+    const streakMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, fog: false });
+    const streaks = new THREE.InstancedMesh(new THREE.BoxGeometry(0.035, 0.035, 3.2), streakMat, STREAKS);
+    streaks.frustumCulled = false;
+    const streakPos = Array.from({ length: STREAKS }, () => {
+      const side = rand() < 0.5 ? -1 : 1;
+      return new THREE.Vector3(side * (1.5 + rand() * 7), -1 + rand() * 7, -70 + rand() * 80);
+    });
+    const tmpM = new THREE.Object3D();
+    scene.add(streaks);
+    const baseFov = camera.fov;
+
     let t = 0;
     stage.flyer = {
       root: dish,
       // Follows the run: lane and height, banking into turns; a wobble after a bump.
       update(sim, dt) {
         t += dt;
+        // How fast, from cruising (0) to flat out (1).
+        const fast = Math.max(0, Math.min(1, (sim.speed - 10) / 16));
+        streakMat.opacity = 0.15 + fast * 0.45;
+        streakPos.forEach((p, i) => {
+          p.z += sim.speed * 1.6 * dt;
+          if (p.z > 12) p.z -= 82;
+          tmpM.position.copy(p);
+          tmpM.updateMatrix();
+          streaks.setMatrixAt(i, tmpM.matrix);
+        });
+        streaks.instanceMatrix.needsUpdate = true;
+        const fov = baseFov + fast * 9;
+        if (Math.abs(camera.fov - fov) > 0.05) {
+          camera.fov += (fov - camera.fov) * Math.min(1, dt * 2);
+          camera.updateProjectionMatrix();
+        }
         dish.position.x = sim.laneX * LANE;
         dish.position.y = HEIGHTS.low + sim.heightX * (HEIGHTS.high - HEIGHTS.low) + Math.sin(t * 2.4) * 0.08;
         // Banking: pilot mode leans with the child's wings; fly mode leans into lane changes.

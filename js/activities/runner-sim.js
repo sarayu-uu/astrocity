@@ -38,8 +38,8 @@ export const HEIGHT_TIME = { camera: { little: 1.0, big: 0.8 }, keyboard: { litt
 export const HEIGHT_HOLD = 0.15;
 // Pilot mode: lanes per second the ship slides at full wing tilt, and the seconds a child needs
 // to cross one lane by tilting (react, tip the arms, slide), by how they play.
-export const STEER_SPEED = { little: 2.0, big: 2.7 };
-export const PILOT_LANE_TIME = { camera: { little: 1.15, big: 0.85 }, keyboard: { little: 0.7, big: 0.55 } };
+export const STEER_SPEED = { little: 3.0, big: 3.8 };
+export const PILOT_LANE_TIME = { camera: { little: 1.0, big: 0.75 }, keyboard: { little: 0.6, big: 0.45 } };
 const SHIP_HALF = 0.32; // the ship's half-width, in lanes
 const GLIDE_HOME = 0.35; // lanes per second back to the middle while the wings are down
 const LEAN_TIME = 0.6; // seconds to see a gust and lean into it
@@ -130,7 +130,7 @@ export function createRunSim(config) {
 
   // ---- Generating the track ahead ------------------------------------------------------
 
-  let genD = 25; // where the next pattern may start (distance): a quiet start
+  let genD = Math.max(25, 2.5 * planSpeed()); // where the next pattern may start: a quiet start (≥ 2.5 s)
   let lastObstacle = null; // { D, kind, safe: [lanes] } the last obstacle placed
   let possibleLanes = [-1, 0, 1]; // where the hero can be after the last obstacle
   let jumpsInRow = 0;

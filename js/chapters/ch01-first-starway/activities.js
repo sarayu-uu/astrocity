@@ -180,7 +180,7 @@ export const ACTIVITIES = {
     goal: SP.goal,
     meter: { fullAt: 100 },
     legs: [
-      { teach: { lanes: [-1, 1], timeout: 25 }, theme: 'gold', patterns: ['spark-line'], coach: SP.teach, coachFigure: 'wings', doneBark: SP.teachDone },
+      { teach: { lanes: [-1, 1], timeout: 15 }, theme: 'gold', patterns: ['spark-line'], coach: SP.teach, coachFigure: 'wings', doneBark: SP.teachDone },
       {
         theme: 'gold', setPiece: 'findSignal',
         patterns: { little: ['spark-line', 'spark-weave', 'storm', 'storm-sparks', 'ring', 'storm-ring'], big: ['spark-weave', 'storm', 'storm-sparks', 'storm-ring', 'storm-wall', 'ring-chain'] },
@@ -222,9 +222,9 @@ export const ACTIVITIES = {
     beats: { start: S.skyPilotStart, end: S.skyPowerEnd },
     tune: {
       // steer: lanes per second at full wing tilt.
-      all: { legSeconds: 40 },
-      little: { speed: { start: 9.5, max: 13.5 }, steer: 2.0, breatherEvery: 180 },
-      big: { speed: { start: 12.5, max: 19 }, steer: 2.7, breatherEvery: 240 },
+      all: { legSeconds: 25, breatherEvery: 0 },
+      little: { speed: { start: 14, max: 20 }, steer: 3.0 },
+      big: { speed: { start: 18, max: 26 }, steer: 3.8 },
     },
     text: { hit: P.hit, goal: P.result, collect: 'Sparks', wingsDown: SP.wingsDown },
     // The island after this game (also for Skip and Continue): the dish points at the gate and
