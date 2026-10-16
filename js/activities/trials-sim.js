@@ -25,10 +25,10 @@ import { holdMeter, pumpCounter, isNeutral } from './moves.js';
 import { mulberry32 } from './runner-sim.js';
 
 export const TRIAL_DEFAULTS = {
-  little: { window: 3.5, demo: 1.8, poseHold: 0.8, freeze: 2, squatHold: 0.6, reachHold: 1 },
-  big: { window: 2.2, demo: 1.2, poseHold: 1.3, freeze: 3, squatHold: 1, reachHold: 1 },
+  little: { window: 3.5, demo: 1.1, poseHold: 0.8, freeze: 2, squatHold: 0.6, reachHold: 1 },
+  big: { window: 2.2, demo: 0.8, poseHold: 1.3, freeze: 3, squatHold: 1, reachHold: 1 },
 };
-const READY = { min: 0.4, neutral: 0.3 };
+const READY = { min: 0.2, neutral: 0.2 };
 const SIDE_HOLD = 0.4; // seconds in a third of the picture to count a step
 const DANCE_BURST = 2; // Big freeze: seconds of dancing before "Freeze!"
 const STILL_FROM = 0.15; // stillFor above this = holding still this frame
@@ -123,7 +123,7 @@ export function createTrialsSim(config) {
     c.first = !seen.has(type);
     // Mimi's demo: longer for cards with several parts, so she can show all of them.
     const parts = c.sides?.length ?? c.poses?.length ?? (type === 'jump' || c.variant === 'quick' || c.variant === 'pumps' ? c.need : 1);
-    c.demo = T.demo + (parts - 1) * 0.55;
+    c.demo = T.demo + (parts - 1) * 0.4;
     return c;
   }
 

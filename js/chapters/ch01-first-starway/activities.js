@@ -205,8 +205,8 @@ export const ACTIVITIES = {
     ],
     beats: { start: S.gateTrialsStart, end: S.gateTrialsEnd },
     tune: {
-      little: { cards: { window: 3.5, demo: 1.8, poseHold: 0.8, freeze: 2, squatHold: 0.6, reachHold: 1 } },
-      big: { cards: { window: 2.2, demo: 1.2, poseHold: 1.3, freeze: 3, squatHold: 1, reachHold: 1 } },
+      little: { cards: { window: 3.5, demo: 1.1, poseHold: 0.8, freeze: 2, squatHold: 0.6, reachHold: 1 } },
+      big: { cards: { window: 2.2, demo: 0.8, poseHold: 1.3, freeze: 3, squatHold: 1, reachHold: 1 } },
     },
     text: { hit: G.hit, miss: G.miss, struggle: G.struggle, rounds: G.rounds, goal: G.result },
     // The island after this game (also for Skip and Continue): the gate's pictures all lit,

@@ -286,43 +286,43 @@ async function show(g, b, c, reps, home, towards, wait, go) {
   for (let r = 0; r < reps; r++) {
     switch (c.type) {
       case 'jump':
-        for (let i = 0; i < (c.need ?? 1); i++) await go(b.hop(home.clone(), 0.9, 0.42));
+        for (let i = 0; i < (c.need ?? 1); i++) await go(b.hop(home.clone(), 0.8, 0.32));
         break;
       case 'squat':
         b.state = 'duck';
-        await wait(c.variant === 'quick' ? 0.3 : 0.8);
+        await wait(c.variant === 'quick' ? 0.22 : 0.5);
         if (c.variant === 'quick') {
           for (let i = 0; i < 2; i++) {
             b.state = 'idle';
-            await wait(0.25);
+            await wait(0.16);
             b.state = 'duck';
-            await wait(0.3);
+            await wait(0.2);
           }
         }
         b.state = 'idle';
         break;
       case 'lean': {
         const s = towards(c.side ?? 'left');
-        await go(g.tween(0.35, k => { b.root.rotation.z = -s * 0.35 * k; }));
-        await wait(0.4);
-        await go(g.tween(0.3, k => { b.root.rotation.z = -s * 0.35 * (1 - k); }));
+        await go(g.tween(0.22, k => { b.root.rotation.z = -s * 0.35 * k; }));
+        await wait(0.25);
+        await go(g.tween(0.2, k => { b.root.rotation.z = -s * 0.35 * (1 - k); }));
         break;
       }
       case 'freeze':
         b.state = 'dance';
-        await wait(0.5);
+        await wait(0.3);
         b.state = 'pose';
         b.pose = POSE_ARMS.bridge;
-        await wait(0.8);
+        await wait(0.5);
         b.state = 'idle';
         break;
       case 'step':
         for (const side of c.sides) {
-          await go(b.walkTo(home.x + towards(side) * 1.3, home.z, 4));
+          await go(b.walkTo(home.x + towards(side) * 1.3, home.z, 6));
           b.faceNow(b.x, b.z + 10);
-          await wait(0.15);
+          await wait(0.08);
         }
-        await go(b.walkTo(home.x, home.z, 4));
+        await go(b.walkTo(home.x, home.z, 6));
         b.faceNow(home.x, home.z + 10);
         break;
       case 'reach':
@@ -330,13 +330,13 @@ async function show(g, b, c, reps, home, towards, wait, go) {
         if (c.variant === 'pumps') {
           for (let i = 0; i < 3; i++) {
             b.pose = POSE_ARMS.star;
-            await wait(0.22);
+            await wait(0.15);
             b.pose = [0.35, 0.35];
-            await wait(0.22);
+            await wait(0.15);
           }
         } else {
           b.pose = POSE_ARMS.star;
-          await wait(0.9);
+          await wait(0.6);
         }
         b.state = 'idle';
         break;
@@ -346,7 +346,7 @@ async function show(g, b, c, reps, home, towards, wait, go) {
           // Mirrored: her arms swap sides, so the moon's raised arm is on the child's side.
           const [l, r2] = POSE_ARMS[p];
           b.pose = [r2, l];
-          await wait(0.7);
+          await wait(0.5);
         }
         b.state = 'idle';
         break;
