@@ -31,7 +31,7 @@ import { playSetPiece } from './set-piece.js';
 
 const LANE_W = 2.2;
 const SEG_LEN = 20;
-const SEGMENTS = 8;
+const SEG_OVERHANG = 8; // how far a track piece's scenery can reach past its own ends
 const POOL = { block: 10, gap: 5, wobble: 5, high: 5, sunk: 5, rock: 5, arch: 5, gust: 4, ring: 8 };
 const VISIBLE = { behind: 8, ahead: 90 }; // track distance drawn around the hero
 const JUMP_HEIGHT = 1.6;
@@ -281,11 +281,16 @@ function createView(stage, sim) {
   const root = new THREE.Group();
   stage.scene.add(root);
 
-  const segments = Array.from({ length: SEGMENTS }, () => {
+  // Track pieces are recycled only once they are fully behind the camera (their scenery hangs a
+  // few units past their ends), else a chunk of background vanishes in view every piece.
+  const behind = Math.max(VISIBLE.behind, stage.camera.position.z + SEG_OVERHANG);
+  const segmentCount = Math.ceil((behind + VISIBLE.ahead) / SEG_LEN) + 2;
+  const segments = Array.from({ length: segmentCount }, () => {
     const s = looks.segment();
     root.add(s);
     return s;
   });
+  root.userData.segments = segments; // (for browser tests)
 
   // A pool per obstacle look the stage has (a stage only draws the kinds it uses).
   const pools = {};
@@ -335,10 +340,14 @@ function createView(stage, sim) {
           leaving.splice(i, 1);
         }
       }
-      // Ground pieces leapfrog forward as they pass behind the camera.
-      const first = Math.floor((sim.dist - VISIBLE.behind) / SEG_LEN);
-      segments.forEach((s, i) => {
-        s.position.z = -((first + i) * SEG_LEN - sim.dist);
+      // Track pieces loop: each keeps its place until it is behind the camera, then only that one
+      // jumps to the far end. (Piece k always shows track slot j with j % count === k, so the
+      // scenery never reshuffles.)
+      const first = Math.floor((sim.dist - behind) / SEG_LEN);
+      const n = segments.length;
+      segments.forEach((s, k) => {
+        const j = first + ((((k - first) % n) + n) % n);
+        s.position.z = -(j * SEG_LEN - sim.dist);
       });
 
       const used = Object.fromEntries(Object.keys(pools).map(k => [k, 0]));
