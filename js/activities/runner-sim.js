@@ -36,6 +36,12 @@ export const REACTION = { little: 1.6, big: 1.1 };
 // arms must stay up (or down) before the height changes, so a flicker doesn't count.
 export const HEIGHT_TIME = { camera: { little: 1.0, big: 0.8 }, keyboard: { little: 0.3, big: 0.3 } };
 export const HEIGHT_HOLD = 0.15;
+// Pilot mode: lanes per second the ship slides at full wing tilt, and the seconds a child needs
+// to cross one lane by tilting (react, tip the arms, slide), by how they play.
+export const STEER_SPEED = { little: 1.6, big: 2.2 };
+export const PILOT_LANE_TIME = { camera: { little: 1.3, big: 0.95 }, keyboard: { little: 0.8, big: 0.6 } };
+const SHIP_HALF = 0.32; // the ship's half-width, in lanes
+const GLIDE_HOME = 0.35; // lanes per second back to the middle while the wings are down
 const LEAN_TIME = 0.6; // seconds to see a gust and lean into it
 const RING = 5; // sparks a spark ring is worth
 
@@ -67,9 +73,11 @@ export function createRunSim(config) {
   const age = config.age ?? 'little';
   const play = config.play ?? 'camera';
   const patterns = { ...PATTERNS, ...config.patterns };
-  const laneTime = LANE_TIME[play][age];
+  const pilot = config.mode === 'pilot';
+  const laneTime = (pilot ? PILOT_LANE_TIME : LANE_TIME)[play][age];
   const reaction = REACTION[age];
   const fly = config.mode === 'fly';
+  const steerSpeed = config.steer ?? STEER_SPEED[age];
   const heightTime = HEIGHT_TIME[play][age];
   const byAge = v => (v && typeof v === 'object' && !Array.isArray(v) && ('little' in v || 'big' in v) ? v[age] : v);
   const avgSpeed = (config.speed.start + config.speed.max) / 2;
@@ -89,6 +97,7 @@ export function createRunSim(config) {
     lane: 0, laneX: 0, // target lane, and the hero's sliding position
     fly, high: false, heightX: 0, // fly mode: flying high?, and the eased height (0 low, 1 high)
     lean: null,
+    pilot, bank: 0, wingsOut: true, // pilot mode: the wings' tilt (-1..1) and whether they're out
     jumpT: -1, pendingJump: null, duck: false, armsUp: false,
     stumbleT: 0, speedMul: 1, tier: 1,
     leg: 0, legStart: 0, endless: false, goalReached: false,
@@ -312,11 +321,29 @@ export function createRunSim(config) {
     sim.dist += sim.speed * dt;
     generate();
 
-    // Lanes: the hero heads for the child's zone and slides there over ~0.18 s.
-    sim.lane = LANE_OF_ZONE[input.zone] ?? 0;
-    sim.laneX += (sim.lane - sim.laneX) * (1 - Math.exp(-dt / 0.06));
-    if (Math.abs(sim.lane - sim.laneX) < 0.01) sim.laneX = sim.lane;
+    if (pilot) {
+      // Pilot: the wings steer. The ship slides sideways as fast as the wings tilt, anywhere
+      // across the three lanes. Wings down: it glides gently back to the middle.
+      const out = input.wingsOut !== false;
+      if (out !== sim.wingsOut) {
+        sim.wingsOut = out;
+        sim.events.push({ type: out ? 'wingsUp' : 'wingsDown' });
+      }
+      sim.bank = out ? Math.max(-1, Math.min(1, input.wingsTilt ?? 0)) : sim.bank * Math.exp(-dt / 0.2);
+      if (out) sim.laneX += sim.bank * steerSpeed * dt;
+      else sim.laneX -= Math.sign(sim.laneX) * Math.min(Math.abs(sim.laneX), GLIDE_HOME * dt);
+      sim.laneX = Math.max(-1.25, Math.min(1.25, sim.laneX));
+      sim.lane = Math.round(sim.laneX);
+    } else {
+      // Lanes: the hero heads for the child's zone and slides there over ~0.18 s.
+      sim.lane = LANE_OF_ZONE[input.zone] ?? 0;
+      sim.laneX += (sim.lane - sim.laneX) * (1 - Math.exp(-dt / 0.06));
+      if (Math.abs(sim.lane - sim.laneX) < 0.01) sim.laneX = sim.lane;
+    }
     const heroLane = Math.round(sim.laneX);
+    // In a lane: pilot uses the ship's real width; the others are always in one lane.
+    const inLane = l => (pilot ? Math.abs(sim.laneX - l) < 0.5 : heroLane === l);
+    const clearOf = l => (pilot ? Math.abs(sim.laneX - l) >= 0.45 + SHIP_HALF : heroLane !== l);
 
     sim.duck = !!input.duck;
     sim.armsUp = !!input.armsUp;
@@ -371,7 +398,7 @@ export function createRunSim(config) {
           o.passed = true;
           const worth = o.kind === 'ring' ? RING : 1;
           if (o.kind !== 'star') sim.stats.bunsSeen += worth;
-          if (o.lane === heroLane && (!fly || (o.height ?? 0) === heroHeight)) {
+          if (inLane(o.lane) && (!fly || (o.height ?? 0) === heroHeight)) {
             o.taken = true;
             if (o.kind === 'star') sim.stats.stars++;
             else sim.stats.buns += worth;
@@ -397,7 +424,7 @@ export function createRunSim(config) {
         continue;
       }
       if (o.move === 'lane' && a <= 0) {
-        judge(o, !o.blocked.includes(heroLane));
+        judge(o, o.blocked.every(clearOf));
         continue;
       }
       if (o.move !== 'lane' && a < -WINDOW_AFTER) judge(o, o.cleared);
@@ -509,6 +536,7 @@ export function createBot(sim, { age = 'little', play = 'camera', seed = 7 } = {
   const heightTime = HEIGHT_TIME[play][age];
   let zoneLane = 0, moving = 0, moveLeft = 0;
   let arms = false, armsTarget = false, armsIn = 0; // fly mode: arms up (high) or not
+  let tilt = 0, pilotWant = 0, pilotTarget = 0, pilotDelay = 0; // pilot mode: the wings
   const zoneName = l => (l < 0 ? 'left' : l > 0 ? 'right' : 'center');
   const jumped = new Set();
   return function input() {
@@ -556,6 +584,30 @@ export function createBot(sim, { age = 'little', play = 'camera', seed = 7 } = {
     }
     const near = (move, from, to) => ahead.some(o => o.move === move && arrival(o) <= from && arrival(o) >= to);
     const gust = ahead.find(o => o.move === 'lean' && arrival(o) <= 0.8 && arrival(o) >= -0.1);
+    if (sim.pilot) {
+      // Steer with the wings: pick a lane like above (nearest free one from where the ship is),
+      // notice it a moment late, and tip the arms over about a third of a second.
+      const at = sim.laneX;
+      let target = pilotTarget;
+      // Like a child, it only reacts to an obstacle once it's close enough to notice (~3 s away).
+      const seen = lane && arrival(lane) <= 3 ? lane : null;
+      if (seen) target = seen.safe.reduce((b, l) => (Math.abs(l - at) < Math.abs(b - at) ? l : b), seen.safe[0]);
+      else if (!lane || arrival(lane) > 3) {
+        const bun = ahead.find(o => goodie(o) && arrival(o) < 2.5);
+        if (bun) target = bun.lane;
+      }
+      if (target !== pilotWant) {
+        pilotWant = target;
+        pilotDelay = play === 'camera' ? 0.4 : 0.1;
+      }
+      if (pilotDelay > 0) pilotDelay -= STEP;
+      else pilotTarget = pilotWant;
+      const err = pilotTarget - at;
+      const goal = Math.abs(err) < 0.04 ? 0 : Math.max(-1, Math.min(1, err * 2.5));
+      const slew = STEP / (play === 'camera' ? 0.35 : 0.12);
+      tilt += Math.max(-slew, Math.min(slew, goal - tilt));
+      return { zone: 'center', jump: false, duck: false, armsUp: false, lean: null, wingsOut: true, wingsTilt: tilt, tracking: true };
+    }
     return {
       zone: zoneName(zoneLane), jump, duck: near('duck', 0.6, -0.1),
       armsUp: sim.fly ? arms : near('armsUp', 0.8, 0),

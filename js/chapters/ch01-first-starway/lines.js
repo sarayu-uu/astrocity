@@ -146,6 +146,25 @@ export const LINES = {
     result: 'Full power!',
   },
 
+  // Sky Pilot (the child flies Lumi's ship with arms out like wings). `auto` lines move on.
+  skyPilot: {
+    goal: "Fly Lumi's ship! Catch the sparks!",
+    start: [
+      ['lumi', 'My dish is a ship now! And YOU are the pilot!', { auto: 3.2 }],
+      ['lumi', 'Put your arms out like wings. Tip them to steer!', { auto: 3.4 }],
+      ['poppy', 'Wheee! We are flying!', { auto: 2.4 }],
+    ],
+    teach: { title: 'Arms out like wings! Tip them to catch the sparks!', camera: 'Tip left to go left. Tip right to go right.', keys: 'Hold ← or → to steer.' },
+    teachDone: 'Great flying, pilot!',
+    legs: { sunset: 'Storm clouds! Steer around them!', stars: 'Look! The stars are out!' },
+    wingsDown: { title: 'Arms out like wings to fly!', camera: 'Arms out wide, like a plane.', keys: '' },
+    findSignal: {
+      intro: [['lumi', 'Now point my dish at the gate. Tip your wings to sweep the sky!', { auto: 3.4 }]],
+      tilt: 'Tip your wings to the {side}!',
+      found: 'There is the gate!',
+    },
+  },
+
   // Gate Trials (inside the sleeping gate). Mimi hosts; `auto` lines move on by themselves.
   gateTrials: {
     goal: 'Copy Mimi to wake the gate!',

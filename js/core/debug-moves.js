@@ -23,7 +23,7 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
     <p id="mv-status"></p>`;
   document.body.appendChild(panel);
 
-  const rows = ['tracking', 'zone', 'jump', 'arms', 'pose', 'duck', 'lean', 'still', 'baseline', 'speed'];
+  const rows = ['tracking', 'zone', 'jump', 'arms', 'pose', 'duck', 'lean', 'wings', 'still', 'baseline', 'speed'];
   const list = $('#mv-list');
   const cells = {};
   for (const r of rows) {
@@ -100,6 +100,8 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
   folder.add(input.tune, 'duckHold', 0, 0.5, 0.01).name('Duck hold (s)').listen();
   folder.add(input.tune, 'leanDeg', 5, 35, 1).name('Lean angle (°)').listen();
   folder.add(input.tune, 'freezeK', 1, 8, 0.1).name('Freeze k × jitter').listen();
+  folder.add(input.tune, 'wingsDead', 0, 20, 1).name('Wings dead zone (°)').listen();
+  folder.add(input.tune, 'wingsMax', 10, 50, 1).name('Wings full turn (°)').listen();
   folder.add({ reset: () => Object.assign(input.tune, TUNE_DEFAULTS[age()]) }, 'reset').name('Reset to age defaults');
   folder.add({
     copy: () => {
@@ -131,6 +133,10 @@ export function createMovesPanel(input, gui, { age = () => 'little' } = {}) {
     set('pose', input.pose, input.pose ?? '');
     set('duck', input.duck, input.camera ? `drop ${(d.drop * 100).toFixed(0)}% / ${(input.tune.duckDrop * 100).toFixed(0)}%` : '');
     set('lean', input.lean, input.camera ? `${input.lean ?? ''} ${d.leanAngle.toFixed(0)}°` : (input.lean ?? ''));
+    // Wings: a little gauge of the steering, from full left to full right.
+    const w = input.wingsTilt;
+    const gauge = '◀' + '·····'.split('').map((_, i) => (Math.round((w + 1) * 2) === i ? '●' : '·')).join('') + '▶';
+    set('wings', input.wingsOut, input.wingsOut ? `${gauge} ${w.toFixed(2)}${input.camera ? ` · ${d.wingsAngle.toFixed(0)}°` : ''}` : 'arms not out');
     set('still', input.stillFor >= freezeHold, input.camera
       ? `${input.stillFor.toFixed(1)} s · ${d.speed.toFixed(2)} < ${d.stillBelow.toFixed(2)}`
       : `${input.stillFor.toFixed(1)} s`);

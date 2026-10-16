@@ -8,8 +8,12 @@
 //   duck           squatting down (held)
 //   lean           'left' | 'right' | null: the torso tilts to that side
 //   stillFor       seconds the body has been held still (freeze)
+//   wingsOut       both arms held out wide, like a plane's wings
+//   wingsTilt      -1..1: how far the "wings" tilt, like a plane banking. Left hand lower
+//                  (the child's own left) = negative = steer left. 0 inside a small dead zone.
 //   tracking       a body is in view
-// Keys: Space jump, W/↑ arms up, ←/→ step, S/↓ duck, A/D lean, 1/2/3 poses, nothing = freeze.
+// Keys: Space jump, W/↑ arms up, ←/→ step (and steer the wings), S/↓ duck, A/D lean,
+//       1/2/3 poses, nothing = freeze.
 //
 // Every camera frame (or recorded frame, in replay) goes through _process(), so a recording of
 // real kids can be fed back through exactly the same detection.
@@ -24,8 +28,9 @@ const visible = p => p && (p.visibility ?? 1) >= 0.5;
 
 // Tunable thresholds (the ?debug panel has sliders). Duck numbers depend on the age setting.
 export const TUNE_DEFAULTS = {
-  little: { duckDrop: 0.18, duckHold: 0.15, leanDeg: 10, freezeK: 3 },
-  big: { duckDrop: 0.22, duckHold: 0.1, leanDeg: 10, freezeK: 3 },
+  // wingsDead: degrees of tilt that do nothing (steady hands); wingsMax: degrees for a full turn.
+  little: { duckDrop: 0.18, duckHold: 0.15, leanDeg: 10, freezeK: 3, wingsDead: 8, wingsMax: 30 },
+  big: { duckDrop: 0.22, duckHold: 0.1, leanDeg: 10, freezeK: 3, wingsDead: 5, wingsMax: 25 },
 };
 
 const CALIBRATE_FULL = 1.5; // seconds, during "Step back so Poppy can see you"
@@ -52,11 +57,13 @@ export class MotionInput {
     this.duck = false;
     this.lean = null;
     this.stillFor = 0;
+    this.wingsOut = false;
+    this.wingsTilt = 0;
     this.jumps = 0; // total jumps so far (lets the ?debug panel watch without consuming them)
     this.jumpSensitivity = JUMP_SENSITIVITY.little;
     this.tune = { ...TUNE_DEFAULTS.little };
     // Live numbers for the ?debug panel.
-    this.debug = { drop: 0, leanAngle: 0, speed: 0, stillBelow: 0, jitter: null, calibrating: false, fps: 0, why: '' };
+    this.debug = { drop: 0, leanAngle: 0, wingsAngle: 0, speed: 0, stillBelow: 0, jitter: null, calibrating: false, fps: 0, why: '' };
 
     this._landmarker = null;
     this._lastVideoTime = -1;
@@ -195,6 +202,10 @@ export class MotionInput {
     const leanL = k.has('KeyA'), leanR = k.has('KeyD');
     this.lean = leanL === leanR ? null : leanL ? 'left' : 'right';
     this.stillFor = k.size ? 0 : this.stillFor + dt;
+    // Wings on the keyboard: always "out"; ← / → bank, easing in over about a quarter second.
+    this.wingsOut = true;
+    const want = left === right ? 0 : left ? -1 : 1;
+    this.wingsTilt += (want - this.wingsTilt) * (1 - Math.exp(-dt / 0.12));
   }
 
   _detect() {
@@ -245,6 +256,8 @@ export class MotionInput {
     this.duck = false;
     this.lean = null;
     this.stillFor = 0;
+    this.wingsOut = false;
+    this.wingsTilt = 0;
     this._duckHeld = 0;
     this._leanHeld = 0;
     this._airborne = false;
@@ -356,6 +369,30 @@ export class MotionInput {
     else if (L === 'out' && Rt === 'out') this.pose = 'bridge';
     else if ((L === 'up') !== (Rt === 'up')) this.pose = 'moon';
     else this.pose = null;
+
+    // Wings: both wrists out wide from the body (a tilted "bridge"), and the angle of the line
+    // between them, like a plane's wings. Mirrored, so the child's own left hand lower = bank
+    // left. A dead zone keeps wobbly arms from steering; smoothed so the ship doesn't jitter.
+    const wl = lm[15], wr = lm[16];
+    let tiltTarget = 0;
+    const wasOut = this.wingsOut;
+    if (visible(wl) && visible(wr)) {
+      const lx = mx(wl), rx = mx(wr);
+      const spread = Math.abs(rx - lx) * this._aspect / torso;
+      const high = Math.max((wl.y - shoulder.y) / torso, (wr.y - shoulder.y) / torso); // the lower hand
+      this.wingsOut = spread > (wasOut ? 1.3 : 1.6) && high < 0.9 && !this.armsUp;
+      if (this.wingsOut) {
+        // Left hand (screen-left point) lower than the right = negative angle = steer left.
+        const left = lx < rx ? wl : wr, right = lx < rx ? wr : wl;
+        const deg = Math.atan2(right.y - left.y, Math.abs(rx - lx) * this._aspect) * 180 / Math.PI;
+        this.debug.wingsAngle = deg;
+        const mag = Math.max(0, Math.abs(deg) - T.wingsDead) / Math.max(1, T.wingsMax - T.wingsDead);
+        tiltTarget = Math.sign(deg) * Math.min(1, mag);
+      }
+    } else {
+      this.wingsOut = false;
+    }
+    this.wingsTilt += (tiltTarget - this.wingsTilt) * (1 - Math.exp(-dt / 0.1));
 
     // Duck: the shoulder-hip midpoint drops below the standing baseline. Releases at 60% of
     // the trigger, so it doesn't flicker. Never while airborne or just after landing.

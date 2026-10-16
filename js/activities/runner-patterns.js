@@ -57,5 +57,9 @@ export const PATTERNS = {
   'hi-lo': { tier: 2, items: [{ kind: 'rock' }, { kind: 'arch', at: 1.4 }] },
   'ring-chain': { tier: 2, items: [{ kind: 'ring', lane: -1, height: 'low' }, { kind: 'ring', at: 0.9, lane: 0, height: 'high' }, { kind: 'ring', at: 0.9, lane: 1, height: 'low' }] },
   gust: { tier: 2, items: [{ kind: 'gust', dir: 'random' }] },
+
+  // ---- Pilot mode (Sky Pilot): steer with tilted "wings" ------------------------------
+  slalom: { tier: 2, items: [{ kind: 'block', lane: -1 }, { kind: 'block', at: 0.9, lane: 1 }, { kind: 'block', at: 0.9, lane: -1 }] },
+  'spark-weave': { tier: 1, items: [{ kind: 'spark', lane: -1, count: 3, every: 0.2 }, { kind: 'spark', at: 0.5, lane: 0, count: 3, every: 0.2 }, { kind: 'spark', at: 0.5, lane: 1, count: 3, every: 0.2 }] },
   'gust-sparks': { tier: 3, items: [{ kind: 'gust', dir: 'random' }, { kind: 'spark', at: 0.4, lane: 'random', height: 'random', count: 4, every: 0.25 }] },
 };

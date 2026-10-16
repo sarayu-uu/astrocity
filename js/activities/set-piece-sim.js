@@ -8,6 +8,7 @@
 //   { move: 'step',   sequence: ['left', 'right'] }   stand in that third of the picture
 //   { move: 'pump',   times: 5 }                      arms up, then down, N times
 //   { move: 'pose',   sequence: ['star'], hold: 1 }   copy each pose and hold it
+//   { move: 'tilt',   sequence: ['left', 'right'] }  arms out like wings, tipped to that side
 // Any number can differ by age: times: { little: 3, big: 5 }. Also: text, does (what it moves
 // in the stage), done (a buddy line when the step is finished).
 //
@@ -20,7 +21,8 @@ import { holdMeter, pumpCounter, zoneFollower, isNeutral } from './moves.js';
 
 export const HELP = { demo: 12, ease: 25, poorTracking: 0.3 };
 export const READY = { min: 0.6, neutral: 0.3 };
-const DEFAULTS = { jump: { times: 3 }, pump: { times: 5 }, armsUp: { hold: 1.4 }, step: { hold: 0.6, sequence: ['left', 'right'] }, pose: { hold: 1, sequence: ['star'] } };
+const DEFAULTS = { jump: { times: 3 }, pump: { times: 5 }, armsUp: { hold: 1.4 }, step: { hold: 0.6, sequence: ['left', 'right'] }, pose: { hold: 1, sequence: ['star'] }, tilt: { hold: 0.8, sequence: ['left', 'right'] } };
+const TILT_ON = 0.5; // wings tilted at least this far (of a full turn) count as "to that side"
 const CENTER_HOLD = 0.3; // seconds back in the middle between two sides (as in side-step)
 const PROGRESS_STEP = 0.02; // a hold has to grow by this much past its best to count as progress
 
@@ -79,15 +81,16 @@ export function createSetPieceSim({ steps, age = 'little' }) {
     st = { count: 0, need: s.times, item: 0, center: false, quarter: 0 };
     if (s.move === 'armsUp') st.meter = holdMeter(s.hold, { drain: 1 });
     if (s.move === 'pump') st.pump = pumpCounter();
-    if (s.move === 'step' || s.move === 'pose') st.meter = holdMeter(s.hold);
+    if (s.move === 'step' || s.move === 'pose' || s.move === 'tilt') st.meter = holdMeter(s.hold);
     setWant();
     emit({ type: 'go', step: s, index: sim.index });
-    if (s.move === 'step' || s.move === 'pose') emit({ type: 'item', step: s, item: s.sequence[0], center: false });
+    if (s.move === 'step' || s.move === 'pose' || s.move === 'tilt') emit({ type: 'item', step: s, item: s.sequence[0], center: false });
   }
 
   function setWant() {
     const s = sim.step;
     if (s.move === 'step') sim.want = { move: 'step', side: st.center ? 'center' : s.sequence[st.item] };
+    else if (s.move === 'tilt') sim.want = { move: 'tilt', side: s.sequence[st.item] };
     else if (s.move === 'pose') sim.want = { move: 'pose', pose: s.sequence[st.item] };
     else sim.want = { move: s.move };
   }
@@ -168,6 +171,26 @@ export function createSetPieceSim({ steps, age = 'little' }) {
         sim.progress = Math.min(1, st.meter.k);
         if (st.meter.done) return finishStep();
         break;
+      case 'tilt': {
+        // Wings tilted to the side asked (like a plane banking), held a moment; no middle step
+        // between sides (going from one side to the other passes through level anyway).
+        const side = s.sequence[st.item];
+        const tilt = input.wingsOut === false ? 0 : input.wingsTilt ?? 0;
+        st.meter.update(side === 'left' ? tilt < -TILT_ON : tilt > TILT_ON, dt);
+        if (st.meter.done) {
+          st.item++;
+          count();
+          if (st.item >= s.sequence.length) {
+            sim.progress = 1;
+            return finishStep();
+          }
+          st.meter = holdMeter(s.hold);
+          setWant();
+          emit({ type: 'item', step: s, item: s.sequence[st.item], center: false });
+        }
+        sim.progress = Math.min(1, (st.item + Math.min(1, st.meter.k)) / s.sequence.length);
+        break;
+      }
       case 'step':
       case 'pose': {
         const len = s.sequence.length;
@@ -233,10 +256,14 @@ export function createSetPieceSim({ steps, age = 'little' }) {
 
   sim.update = (input, dt) => {
     if (sim.phase === 'done') return;
-    sim.aim = follower.update(input.zone ?? 'center', dt);
+    // What the scene follows: the wings' tilt in a tilt step, else which third the child is in.
+    const tiltStep = sim.step?.move === 'tilt';
+    sim.aim = tiltStep ? (sim.aim + ((input.wingsTilt ?? 0) - sim.aim) * (1 - Math.exp(-dt / 0.15))) : follower.update(input.zone ?? 'center', dt);
     if (sim.phase === 'ready') {
       readyT += dt;
-      neutralT = isNeutral(input) ? neutralT + dt : 0;
+      // Ready for a tilt step = wings level (arms may stay out); else the usual neutral.
+      const ready = tiltStep ? Math.abs(input.wingsTilt ?? 0) < 0.3 && !input.armsUp && !input.duck : isNeutral(input);
+      neutralT = ready ? neutralT + dt : 0;
       sim.readyK = Math.min(1, Math.min(readyT / READY.min, neutralT / READY.neutral));
       if (readyT >= readyHintAt) {
         readyHintAt += HELP.demo;
@@ -294,6 +321,10 @@ export function createSetPieceBot(sim, { delay = 0.4, pace = 1 } = {}) {
         break;
       case 'step':
         input.zone = w.side;
+        break;
+      case 'tilt':
+        input.wingsOut = true;
+        input.wingsTilt = w.side === 'left' ? -1 : 1;
         break;
       case 'pose':
         input.pose = w.pose;

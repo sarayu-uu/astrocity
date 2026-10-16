@@ -69,6 +69,16 @@ export async function skyPowerStart(g, stage) {
   await rise;
 }
 
+// ---- Sky Pilot -----------------------------------------------------------------------
+
+// The ship lifts off; Lumi hands the controls to the child.
+export async function skyPilotStart(g, stage) {
+  const rise = stage.sky.liftOff(g);
+  for (const line of LINES.skyPilot.start) await say(g, line);
+  g.ui.hideDialogue();
+  await rise;
+}
+
 // ---- Gate Trials -----------------------------------------------------------------------
 
 const GT = LINES.gateTrials;

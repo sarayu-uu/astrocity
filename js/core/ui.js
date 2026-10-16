@@ -39,6 +39,12 @@ export function figure(kind) {
     const s = kind === 'lean-left' ? -1 : 1;
     return `<svg viewBox="0 0 120 170" class="fig fig-lean"><g transform="rotate(${s * 16} 60 146)">${core}${FIG.stand}</g>${legs}<path class="arrow" d="M${60 - s * 40} 14 L${60 + s * 40} 14 M${60 + s * 28} 4 L${60 + s * 40} 14 L${60 + s * 28} 24"/></svg>`;
   }
+  // Pilot: arms out like wings, tipped to steer (the child's own left hand lower = left).
+  if (kind === 'wings' || kind === 'wings-left' || kind === 'wings-right') {
+    const d = kind === 'wings-left' ? 20 : kind === 'wings-right' ? -20 : 0;
+    const arrow = d > 0 ? STEP.left : d < 0 ? STEP.right : '';
+    return `<svg viewBox="0 0 120 176" class="fig fig-wings">${core}<path d="M60 58 L8 ${58 + d} M60 58 L112 ${58 - d}"/>${legs}${arrow}</svg>`;
+  }
   if (kind === 'armsUp' || kind === 'up') kind = 'star';
   if (kind in STEP) {
     return `<svg viewBox="0 0 120 176" class="fig fig-step fig-step-${kind}"><g class="body">${core}${FIG.stand}${legs}</g>${STEP[kind]}</svg>`;

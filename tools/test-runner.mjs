@@ -56,6 +56,22 @@ for (const age of ['little', 'big']) {
   }
 }
 
+console.log('\nPilot mode (steer with wings), every lane pattern at the fastest speed, steered like a child on camera:');
+const PILOT = ['spark-line', 'spark-weave', 'storm', 'storm-sparks', 'ring', 'storm-ring', 'storm-wall', 'zigzag', 'slalom', 'ring-chain', 'puff-buns', 'star-stone'];
+for (const age of ['little', 'big']) {
+  for (const name of PILOT) {
+    const fast = FLY_SPEED[age].max * ADAPT_MAX;
+    const { hits, cleared } = play({
+      age, play: 'camera', seed: 3, speed: FLY_SPEED[age], forceSpeed: fast, adaptive: false, mode: 'pilot',
+      legs: [{ length: fast * 60, patterns: [name] }],
+    }, 70);
+    const hasObstacles = PATTERNS[name].items.some(i => isObstacle(i.kind));
+    const ok = !hits.length && (!hasObstacles || cleared > 0);
+    if (!ok) failed++;
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${age.padEnd(6)} ${name.padEnd(14)} cleared ${String(cleared).padStart(3)}  ${hits.length ? 'hits: ' + hits.slice(0, 4).join(', ') : ''}`);
+  }
+}
+
 console.log('\nA whole three-leg run per age (adaptive on, mixed patterns):');
 for (const age of ['little', 'big']) {
   for (const seed of [1, 2, 3]) {

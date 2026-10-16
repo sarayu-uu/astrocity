@@ -313,6 +313,15 @@ skyPower: {
 - **Finish:** the beam reaches across the sky to the gate ("FULL POWER! Point the beam at the gate!"), the result card, then the `beam` scene. The island is left with the dish pointed at the gate and the crank full.
 - **Length** (`tools/test-games.mjs`): 5.0–5.6 min for a perfect player and 5.3–5.9 min for a slower simulated child; no stumbles for the camera-speed bot in any pattern or full run.
 
+### Sky Pilot (replaces Sky Power in the chapter)
+
+The child is the plane: arms out wide like wings, tipped to steer Lumi's ship left and right (left hand lower = left, mirrored like every move). Steering is smooth across the three lanes, as fast as the tilt (Little 1.6, Big 2.2 lanes per second at full tilt); arms down = the ship glides gently to the middle with an "Arms out like wings to fly!" card. No up/down.
+
+- **Wings** (`input.js`): arms out = wrists spread wide at about shoulder height; tilt = the angle of the line between the wrists, with a dead zone (Little 8°, Big 5°) and full turn at 30° / 25°. The ?debug Moves panel has a wings gauge and both sliders. Keyboard: ← / → steer.
+- **Pilot mode** (`runner-sim.js`, `mode: 'pilot'`): ship position and real width decide catches and clears; spacing assumes 1.3 s (Little) / 0.95 s (Big) to cross a lane on camera. Patterns: storms, storm walls, zigzag, slalom (Big), sparks, spark weave, rings.
+- **Moments:** Find the Signal is a wings move (tip left, then right, to sweep the dish onto the gate; a new set-piece step type `tilt`); Crank Jam and Full Power stay arm pumps and a star.
+- **Checked:** every pilot pattern for both ages at top speed with camera-speed steering (no hits); holding ← / → moves the ship and its bank to screen-left / right; a full playthrough to the `beam` scene. Length: 5.0–5.4 min (perfect player), 5.3–5.8 min (slower child).
+
 ## Game 3: Gate Trials (inside the sleeping gate)
 
 Inside the gate is a sleeping crystal arena that only wakes up through movement. Mimi hosts a run of quick "copy me" challenges, and three crystal locks (the gate's carved pictures) open the way to the Starway. Engine: new trials plus set-piece. Length: 6–9 minutes.

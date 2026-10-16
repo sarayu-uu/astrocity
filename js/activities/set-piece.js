@@ -51,6 +51,8 @@ export const MOVE_TEXT = {
   star: { title: 'Make a star!', camera: 'Both arms up. Hold still...', keys: 'Hold 1.' },
   bridge: { title: 'Make a bridge!', camera: 'Arms out wide. Hold still...', keys: 'Hold 2.' },
   moon: { title: 'Make a moon!', camera: 'One arm up. Hold still...', keys: 'Hold 3.' },
+  tilt: { title: 'Tip your wings to the {side}!', camera: 'Arms out wide, like a plane. Tip them!', keys: 'Hold ← or →.' },
+  wingsReady: { title: 'Arms out, wings level…', camera: 'Arms out wide like a plane. Keep them flat.', keys: 'Let go of the arrow keys.' },
   cantSee: { title: "Poppy can't see you", camera: 'Step back so all of you is in the picture.', keys: '' },
 };
 const DEMO_LINE = {
@@ -59,6 +61,7 @@ const DEMO_LINE = {
   pump: 'Up, down! Like me!',
   step: 'Step to the {side}, like me!',
   pose: 'Make a {pose}, like me!',
+  tilt: 'Wings out, tip to the {side}, like me!',
 };
 const DONE_LINES = ['Yes!', 'You did it!', 'Wow!', 'Great moving!'];
 const EASE_LINE = 'Just a little more!';
@@ -129,7 +132,7 @@ export async function playSetPiece(g, stage, piece, { hero, leave, keepHero = fa
       t += g.dt;
       const frameInput = bot
         ? bot(g.dt)
-        : { zone: input.zone, armsUp: input.armsUp, armsDown: input.armsDown, pose: input.pose, duck: input.duck, tracking: input.tracking, jump: input.consumeJump() };
+        : { zone: input.zone, armsUp: input.armsUp, armsDown: input.armsDown, pose: input.pose, duck: input.duck, wingsOut: input.wingsOut, wingsTilt: input.wingsTilt, tracking: input.tracking, jump: input.consumeJump() };
       const stepBefore = sim.step;
       sim.update(frameInput, g.dt);
 
@@ -242,14 +245,23 @@ function showStepCoach(g, sim) {
   if (!s || sim.phase === 'done') return;
   if (sim.phase === 'ready') {
     ui.arrow(null);
-    ui.preview = { zones: true, target: 'center' };
-    coach(g, 'stand', MOVE_TEXT.ready);
+    if (s.move === 'tilt') {
+      ui.preview = null;
+      coach(g, 'wings', MOVE_TEXT.wingsReady);
+    } else {
+      ui.preview = { zones: true, target: 'center' };
+      coach(g, 'stand', MOVE_TEXT.ready);
+    }
     return;
   }
   const own = typeof s.text === 'string' ? { title: s.text } : s.text ?? {};
   const w = sim.want;
   ui.preview = s.move === 'step' ? { zones: true, target: w.side } : null;
-  if (s.move === 'step') {
+  if (s.move === 'tilt') {
+    ui.arrow(w.side);
+    const entry = { ...MOVE_TEXT.tilt, ...own };
+    coach(g, `wings-${w.side}`, { ...entry, title: fill(entry.title, { side: w.side }) });
+  } else if (s.move === 'step') {
     if (w.side === 'center') {
       ui.arrow(null);
       coach(g, 'center', MOVE_TEXT.middle);
@@ -290,10 +302,19 @@ async function demonstrate(g, b, want, camera) {
       await b.walkTo(at.x + dir * 1.2, at.z, 3);
       await g.wait(0.6);
       await b.walkTo(at.x, at.z, 3);
+    } else if (want.move === 'tilt') {
+      // Arms out like wings, tipped toward the child's side (she faces them, so it's mirrored).
+      b.state = 'pose';
+      b.pose = [1.5, 1.5];
+      const s = want.side === 'left' ? 1 : -1;
+      await g.tween(0.4, k => { b.root.rotation.z = s * 0.35 * k; });
+      await g.wait(1.2);
+      await g.tween(0.3, k => { b.root.rotation.z = s * 0.35 * (1 - k); });
     }
   } finally {
     b.state = before;
     b.pose = beforePose;
+    b.root.rotation.z = 0;
     b.face(at.x, at.z - 10);
   }
 }

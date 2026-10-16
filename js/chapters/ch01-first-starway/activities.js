@@ -17,6 +17,7 @@ import * as S from './run-scenes.js';
 const R = LINES.starStoneRun;
 const P = LINES.skyPower;
 const G = LINES.gateTrials;
+const SP = LINES.skyPilot;
 
 export const ACTIVITIES = {
   // Star Stone Run: a runner game down the Sky River (replaces Cross the Stones in chapter.js).
@@ -156,6 +157,76 @@ export const ACTIVITIES = {
       big: { speed: { start: 10, max: 16 }, breatherEvery: 240 },
     },
     text: { hit: P.hit, goal: P.result, collect: 'Sparks' },
+    // The island after this game (also for Skip and Continue): the dish points at the gate and
+    // the crank is full, exactly as Aim the Dish and Turn the Sky Crank left it.
+    islandEnd(g) {
+      g.W.crank.turnDish(0);
+      g.W.crank.setCharge(1);
+      g.B.lumi.state = 'work';
+    },
+  },
+
+  // Sky Pilot: the child flies Lumi's ship with arms out like wings, tipping them to steer
+  // (replaces Sky Power in chapter.js; Sky Power stays above as a fallback). Steering only, no
+  // heights. Find the Signal is a wings move too; Crank Jam and Full Power stay arm pumps.
+  skyPilot: {
+    id: 'ch01.sky-pilot',
+    label: 'Chapter 1 · Sky Pilot',
+    engine: 'runner',
+    mode: 'pilot',
+    stage: 'sky-above',
+    hero: 'lumi',
+    place: ['Above the Clouds', "Lumi's ship"],
+    goal: SP.goal,
+    meter: { fullAt: 100 },
+    legs: [
+      { teach: { lanes: [-1, 1], timeout: 40 }, theme: 'gold', patterns: ['spark-line'], coach: SP.teach, coachFigure: 'wings', doneBark: SP.teachDone },
+      {
+        theme: 'gold', setPiece: 'findSignal',
+        patterns: { little: ['spark-line', 'spark-weave', 'storm', 'storm-sparks', 'ring', 'storm-ring'], big: ['spark-weave', 'storm', 'storm-sparks', 'storm-ring', 'storm-wall', 'ring-chain'] },
+      },
+      {
+        theme: 'sunset', tier: 2, setPiece: 'crankJam', bark: SP.legs.sunset,
+        patterns: { little: ['storm', 'storm-sparks', 'storm-ring', 'spark-weave', 'ring', 'storm-wall'], big: ['storm-wall', 'slalom', 'zigzag', 'storm-ring', 'ring-chain', 'spark-weave'] },
+      },
+      {
+        theme: 'stars', tier: 3, setPiece: 'fullPower', bark: SP.legs.stars,
+        patterns: { little: ['storm-wall', 'storm-ring', 'zigzag', 'spark-weave', 'ring-chain'], big: ['slalom', 'zigzag', 'storm-wall', 'ring-chain', 'storm-sparks', 'star-stone'] },
+      },
+    ],
+    setPieces: {
+      findSignal: {
+        scene: 'findSignal', helper: 'lumi', intro: SP.findSignal.intro, cheer: P.cheers[0],
+        steps: [
+          // Tip the wings to sweep the dish; the last side (right) is where the gate is.
+          { move: 'tilt', sequence: { little: ['left', 'right'], big: ['left', 'right', 'left', 'right'] }, hold: 0.8, text: SP.findSignal.tilt, does: 'sweep', done: SP.findSignal.found },
+          // { move: 'armsUp', hold: 1, text: P.extra.lock, does: 'lock' },
+        ],
+      },
+      crankJam: {
+        scene: 'crankJam', helper: 'lumi', intro: P.crankJam.intro, cheer: P.cheers[1],
+        steps: [
+          { move: 'pump', times: { little: 5, big: 8 }, text: P.crankJam.pump, does: 'crank', done: P.crankJam.fixed },
+          // { move: 'armsUp', hold: 1.2, text: P.extra.hold, does: 'hold' },
+        ],
+      },
+      fullPower: {
+        scene: 'fullPower', helper: 'lumi', intro: P.fullPower.intro, cheer: P.cheers[2],
+        steps: [
+          { move: 'pump', times: 6, text: P.fullPower.pump, does: 'charge' },
+          // { move: 'pump', times: { little: 3, big: 5 }, text: P.extra.boost, does: 'boost' },
+          { move: 'pose', sequence: ['star'], hold: 1, text: P.fullPower.star, does: 'fire', done: P.fullPower.done },
+        ],
+      },
+    },
+    beats: { start: S.skyPilotStart, end: S.skyPowerEnd },
+    tune: {
+      // steer: lanes per second at full wing tilt.
+      all: { legSeconds: 80 },
+      little: { speed: { start: 7.5, max: 11 }, steer: 1.6, breatherEvery: 180 },
+      big: { speed: { start: 10, max: 16 }, steer: 2.2, breatherEvery: 240 },
+    },
+    text: { hit: P.hit, goal: P.result, collect: 'Sparks', wingsDown: SP.wingsDown },
     // The island after this game (also for Skip and Continue): the dish points at the gate and
     // the crank is full, exactly as Aim the Dish and Turn the Sky Crank left it.
     islandEnd(g) {

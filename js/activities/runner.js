@@ -10,6 +10,9 @@
 //   mode: 'fly'                    fly instead of run: two heights (arms up / down), sparks,
 //                                  rings, rocks, arches, gusts. The stage provides stage.flyer
 //                                  ({ root, update(sim, dt) }) and runner.heights { low, high }.
+//   mode: 'pilot'                  fly by steering: arms out like wings, tipped to steer, free
+//                                  across the lanes (no heights). Same stage needs as 'fly'.
+//   tune.steer                     pilot: lanes per second at full tilt (default by age)
 //   meter: { fullAt }              a charge meter on the HUD that fills with what is collected
 //   legs: [{ length or seconds, theme, patterns, tier, setPiece: 'name', bark, coach, teach }]
 //                                  (see runner-sim.js; bark is said as the leg starts, coach shows
@@ -39,7 +42,7 @@ const JUMP_HEIGHT = 1.6;
 // The child's body (or keys) as the sim's input. `jump` only on the first step of a frame.
 // A MotionInput in replay mode works here too, so recordings can drive a run later.
 export function inputFromMotion(input) {
-  return { zone: input.zone, jump: input.consumeJump(), duck: input.duck, armsUp: input.armsUp, lean: input.lean, tracking: input.tracking };
+  return { zone: input.zone, jump: input.consumeJump(), duck: input.duck, armsUp: input.armsUp, lean: input.lean, wingsOut: input.wingsOut, wingsTilt: input.wingsTilt, tracking: input.tracking };
 }
 
 export default {
@@ -62,6 +65,7 @@ export default {
       patterns: a.patterns,
       breatherEvery: a.tune.breatherEvery ?? (age === 'little' ? 180 : 240),
       mode: a.mode,
+      steer: a.tune.steer,
     });
     const view = createView(stage, sim);
     // ?debug › Autoplay: the test bot plays instead of the child (keyboard lane speed).
@@ -70,7 +74,7 @@ export default {
     stage.runner.theme(sim.legDef(0).theme);
     // Fly mode: the stage's flyer (a flying dish with the buddies on it) moves instead of a
     // running buddy; the hero rides it.
-    const flyer = a.mode === 'fly' ? stage.flyer : null;
+    const flyer = a.mode === 'fly' || a.mode === 'pilot' ? stage.flyer : null;
     if (!flyer) hero.place(0, 0).faceNow(0, -10);
     // The chase camera, so it can come back exactly after story shots.
     const chase = { pos: stage.camera.position.clone(), quat: stage.camera.quaternion.clone() };
@@ -106,7 +110,7 @@ export default {
       hero.state = flyer ? 'sit' : 'run';
       g.needsBody = true;
       g.onResume = () => sim.clearAhead(2);
-      ui.runHud({ progress: 0, count: 0, sparks: a.mode === 'fly', onStop: () => { stop = true; } });
+      ui.runHud({ progress: 0, count: 0, sparks: !!flyer, onStop: () => { stop = true; } });
       legCoach(sim.legDef(0));
       // Session log (playtests): each leg's play time (pauses not counted), buns and clears.
       const snap = () => ({ t: sim.t, buns: sim.stats.buns, bunsSeen: sim.stats.bunsSeen, cleared: sim.stats.cleared });
@@ -132,7 +136,8 @@ export default {
           if (e.type === 'telegraph') {
             const dir = e.move === 'lane' ? Math.sign(e.toward - sim.lane) : 0;
             if (e.move !== 'lane' || dir !== 0) {
-              const cue = e.move === 'lane' ? (dir < 0 ? 'left' : 'right') : e.move === 'lean' ? `lean-${e.obj.dir}` : e.move;
+              const side = dir < 0 ? 'left' : 'right';
+              const cue = e.move === 'lane' ? (sim.pilot ? `wings-${side}` : side) : e.move === 'lean' ? `lean-${e.obj.dir}` : e.move;
               ui.moveCue(cue);
               sfx.cue(e.move === 'up' ? 'armsUp' : e.move, e.move === 'lean' ? (e.obj.dir === 'left' ? -1 : 1) : dir);
             }
@@ -147,6 +152,11 @@ export default {
             sfx.chime();
           } else if (e.type === 'star') {
             sfx.chime();
+          } else if (e.type === 'wingsDown') {
+            // Pilot: arms dropped. The ship glides to the middle; a gentle reminder.
+            coach(g, 'wings', T.wingsDown ?? { title: 'Arms out like wings to fly!', camera: 'Arms out wide, like a plane.', keys: '' });
+          } else if (e.type === 'wingsUp') {
+            legCoach(sim.currentLeg());
           } else if (e.type === 'teachDone') {
             legCoach(null);
             sfx.chime();

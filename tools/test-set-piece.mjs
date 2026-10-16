@@ -38,6 +38,7 @@ const STEPS = {
   step: { move: 'step', sequence: { little: ['left', 'right'], big: ['left', 'right', 'left'] }, hold: 0.6 },
   pump: { move: 'pump', times: { little: 5, big: 8 } },
   pose: { move: 'pose', sequence: { little: ['star'], big: ['star', 'bridge', 'moon'] }, hold: { little: 0.8, big: 1.3 } },
+  tilt: { move: 'tilt', sequence: { little: ['left', 'right'], big: ['left', 'right', 'left', 'right'] }, hold: 0.8 },
 };
 
 console.log('Each step type, played by the bot:');
@@ -135,13 +136,32 @@ console.log('\nStep sequence needs the middle between sides:');
   check(sim.phase === 'done', 'middle, then right: done');
 }
 
+console.log('\nTilt (wings): the side counts, the other side and level wings do not:');
+{
+  const WINGS = tilt => ({ ...NEUTRAL, armsDown: false, wingsOut: true, wingsTilt: tilt });
+  let sim = createSetPieceSim({ steps: [{ move: 'tilt', sequence: ['right'], hold: 0.8 }] });
+  play(sim, t => (t < 0.7 ? WINGS(0) : WINGS(-1)), 20);
+  check(sim.phase === 'move', 'wings tilted left do not count for "right"');
+  sim = createSetPieceSim({ steps: [{ move: 'tilt', sequence: ['right'], hold: 0.8 }] });
+  play(sim, t => (t < 0.7 ? WINGS(0) : WINGS(0.2)), 20);
+  check(sim.phase === 'move', 'a small wobble (0.2) does not count');
+  sim = createSetPieceSim({ steps: [{ move: 'tilt', sequence: ['right'], hold: 0.8 }] });
+  play(sim, t => (t < 0.7 ? WINGS(0) : WINGS(0.8)), 20);
+  check(sim.phase === 'done', 'wings tilted right count, arms staying out between steps is fine');
+  // Arms out wide but level is "ready" for a tilt step (it would block every other step).
+  sim = createSetPieceSim({ steps: [{ move: 'pump', times: 1 }, { move: 'tilt', sequence: ['left'], hold: 0.5 }] });
+  play(sim, t => (t < 0.7 ? NEUTRAL : t < 1.4 ? { ...NEUTRAL, armsUp: true, armsDown: false } : t < 1.6 ? NEUTRAL : t < 2.6 ? WINGS(0) : WINGS(-1)), 20);
+  check(sim.phase === 'done', 'level wings pass "Ready" for a tilt step');
+}
+
 console.log('\nSkip: finishAll() ends every step:');
 {
   const sim = createSetPieceSim({ steps: Object.values(STEPS) });
   sim.update(NEUTRAL, DT);
   sim.events.length = 0;
   sim.finishAll();
-  check(sim.phase === 'done' && sim.events.filter(e => e.type === 'stepDone').length === 5, 'all five steps done');
+  const n = Object.keys(STEPS).length;
+  check(sim.phase === 'done' && sim.events.filter(e => e.type === 'stepDone').length === n, `all ${n} steps done`);
 }
 
 console.log(failed ? `\n${failed} failed` : '\nAll passed');

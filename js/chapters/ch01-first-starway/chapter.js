@@ -18,7 +18,7 @@ export default {
     { id: 'to-bridge', name: 'The old bridge', scene: S.toBridge },
     { id: 'stone-run', name: 'Star Stone Run', activity: A.starStoneRun },
     { id: 'gate-rock', name: 'The big potato', scene: S.gateRock },
-    { id: 'sky-power', name: 'Sky Power', activity: A.skyPower },
+    { id: 'sky-pilot', name: 'Sky Pilot', activity: A.skyPilot },
     { id: 'beam', name: 'The gate wakes up', scene: S.beam },
     { id: 'gate-trials', name: 'Gate Trials', activity: A.gateTrials },
     { id: 'starway', name: 'The Starway comes back', scene: S.starway },

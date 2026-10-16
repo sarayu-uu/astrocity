@@ -21,13 +21,13 @@ Chapter 1 is a list of steps in [js/chapters/ch01-first-starway/chapter.js](js/c
 | 3 | The old bridge | scene | |
 | 4 | Star Stone Run | game · `runner` on the Sky River, 3 bridges | step, jump, duck, arms up, poses |
 | 5 | The big potato | scene | |
-| 6 | Sky Power | game · `runner` fly mode above the clouds, 3 moments | step, arms up / down, pumps, star, lean (Big) |
+| 6 | Sky Pilot | game · `runner` pilot mode above the clouds: fly Lumi's ship with arms out like wings, 3 moments | arms out and tipped to steer, pumps, star |
 | 7 | The gate wakes up | scene | |
 | 8 | Gate Trials | game · `trials` in the crystal arena: 3 rounds of 8 "copy Mimi" cards, 3 crystal locks | jump, squat, lean, freeze, step, reach, poses, free dance |
 | 9 | The Starway comes back | scene | |
 | 10 | Play in Star Square | free play | |
 
-The games have stars, a score and a best score, but no fail states: a missed obstacle is a stumble and the run goes on. If the child steps out of view, play pauses until they come back. The original island activities (Cross the Stones, Aim the Dish, Turn the Sky Crank, Copy the Poses) are still in `activities.js` and can be put back in `chapter.js`.
+The games have stars, a score and a best score, but no fail states: a missed obstacle is a stumble and the run goes on. If the child steps out of view, play pauses until they come back. The original island activities (Cross the Stones, Aim the Dish, Turn the Sky Crank, Copy the Poses) and Sky Power (fly with arms up / down) are still in `activities.js` and can be put back in `chapter.js`.
 
 **Story controls (every chapter gets these):**
 

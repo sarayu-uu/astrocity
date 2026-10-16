@@ -26,6 +26,7 @@ const R = LINES.starStoneRun, P = LINES.skyPower;
 const GAMES = {
   starStoneRun: { start: Math.max(autoTime(R.start), 7), end: 1.4 + 1.8 + autoTime([R.found, R.drift]), after: { bridge1: 2.2, bridge2: 2.2, lastBridge: 0.8 } },
   skyPower: { start: Math.max(autoTime(P.start), 3.2), end: 2.4 + autoTime([P.fire]), after: {} },
+  skyPilot: { start: Math.max(autoTime(LINES.skyPilot.start), 3.2), end: 2.4 + autoTime([P.fire]), after: {} },
 };
 const SHOT = 2 * 1.0, CHEER = 2;
 
@@ -97,7 +98,7 @@ for (const [key, story] of Object.entries(GAMES)) {
       for (const seed of [1, 2, 3]) {
         const tune = { ...run.tune?.all, ...run.tune?.[age] };
         if (LEG_SECONDS) tune.legSeconds = LEG_SECONDS;
-        const sim = createRunSim({ age, play: 'camera', seed, mode: run.mode, speed: tune.speed, legs: run.legs, legSeconds: tune.legSeconds, patterns: run.patterns, breatherEvery: tune.breatherEvery });
+        const sim = createRunSim({ age, play: 'camera', seed, mode: run.mode, steer: tune.steer, speed: tune.speed, legs: run.legs, legSeconds: tune.legSeconds, patterns: run.patterns, breatherEvery: tune.breatherEvery });
         const bot = createBot(sim, { age, play: 'camera', seed });
         const legTimes = [];
         let legT = 0, pieces = 0, breathers = 0, hits = [], teachEnd = null;
@@ -124,7 +125,7 @@ for (const [key, story] of Object.entries(GAMES)) {
         const ok = sim.goalReached && !hits.length && legsOk && total <= 8 * 60;
         totals[who].push(total);
         if (!ok) failed++;
-        const caught = run.mode === 'fly' ? `sparks ${sim.stats.buns}/${sim.stats.bunsSeen}` : `buns ${sim.stats.buns}/${sim.stats.bunsSeen}`;
+        const caught = run.mode ? `sparks ${sim.stats.buns}/${sim.stats.bunsSeen}` : `buns ${sim.stats.buns}/${sim.stats.bunsSeen}`;
         console.log(`${ok ? 'PASS' : 'FAIL'}  ${age.padEnd(6)} seed ${seed}  teach ${legTimes[0].toFixed(0)} s${teachEnd ? '' : ' (timed out)'}, legs ${legTimes.slice(1).map(x => x.toFixed(0)).join(' / ')} s, set pieces ${pieces.toFixed(0)} s, rests ${breathers} s, story ${(story.start + story.end).toFixed(0)} s, ${caught}  =>  ${(total / 60).toFixed(1)} min${hits.length ? `  hits: ${hits.join(', ')}` : ''}${legsOk ? '' : '  (a leg is more than 20% off its target)'}`);
       }
     }

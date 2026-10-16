@@ -244,7 +244,14 @@ export default {
         t += dt;
         dish.position.x = sim.laneX * LANE;
         dish.position.y = HEIGHTS.low + sim.heightX * (HEIGHTS.high - HEIGHTS.low) + Math.sin(t * 2.4) * 0.08;
-        dish.rotation.z = -(sim.lane - sim.laneX) * 0.5 + (sim.stumbleT > 0 ? Math.sin(t * 22) * 0.18 : 0);
+        // Banking: pilot mode leans with the child's wings; fly mode leans into lane changes.
+        const bank = sim.pilot ? sim.bank * 0.45 : (sim.lane - sim.laneX) * 0.5;
+        dish.rotation.z = -bank + (sim.stumbleT > 0 ? Math.sin(t * 22) * 0.18 : 0);
+        if (sim.pilot) {
+          // Lumi holds her arms out like wings with the child (and drops them when they do).
+          cast.lumi.state = sim.wingsOut ? 'pose' : 'sit';
+          cast.lumi.pose = [1.5, 1.5];
+        }
         dish.rotation.x = (sim.high ? 1 : 0) - sim.heightX > 0.05 ? -0.12 : sim.heightX - (sim.high ? 1 : 0) > 0.05 ? 0.12 : 0;
         rimMat.emissiveIntensity = 0.5 + Math.sin(t * 4) * 0.15;
       },
