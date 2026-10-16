@@ -173,7 +173,8 @@ export default {
           return g;
         },
       },
-      bun: { geometry: new THREE.OctahedronGeometry(0.32), material: glow('#fff27a', 1.4) }, // a spark
+      // A spark: big, bright cyan-white so it stands out on the golden, sunset and night skies.
+      bun: { geometry: new THREE.OctahedronGeometry(0.55).scale(1, 1.3, 1), material: new THREE.MeshBasicMaterial({ color: '#29cfff' }) },
       star: { geometry: new THREE.OctahedronGeometry(0.5), material: glow('#ff9df0', 1.4) },
       theme(name) {
         const t = THEMES[name] ?? THEMES.gold;

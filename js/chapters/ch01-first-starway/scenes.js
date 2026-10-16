@@ -15,10 +15,12 @@ const props = {};
 // ---------------------------------------------------------------- Before the title
 // The opening picture, already alive behind the title screen.
 export function setup(g) {
-  const { B, rig } = g;
+  const { B, rig, W } = g;
   const { poppy, nutty, lumi, mimi, zuzu } = B;
-  poppy.place(-7.3, 8.3).faceNow(-7.2, 12);
+  // Poppy stands right over the stuck stone, bent down to it, heaving (it wiggles as she tugs).
+  poppy.place(-7.22, 8.62).faceNow(W.relic.position.x, W.relic.position.z + 2);
   poppy.state = 'pull';
+  W.relic.userData.tug = 1;
   nutty.place(-5.3, 9.7).faceNow(-7, 9);
   nutty.state = 'eat';
   props.bun = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), new THREE.MeshStandardMaterial({ color: '#d9893d', roughness: 0.8 }));
@@ -56,6 +58,7 @@ export async function arrival(g) {
 
   // The stone pops free and Poppy falls over.
   sfx.pop();
+  W.relic.userData.tug = 0;
   poppy.state = 'sit';
   const from = W.relic.position.clone();
   await g.tween(0.9, k => {

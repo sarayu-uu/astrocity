@@ -36,7 +36,7 @@ export const ACTIVITIES = {
     place: ['The Sky River', 'Down the old bridge'],
     goal: R.goal,
     legs: [
-      { teach: { lanes: [-1, 1], timeout: 40 }, theme: 'mint', patterns: ['bun-line'], coach: R.teach, doneBark: R.teachDone },
+      { teach: { lanes: [-1, 1], timeout: 30 }, theme: 'mint', patterns: ['bun-line'], coach: R.teach, doneBark: R.teachDone },
       {
         theme: 'mint', setPiece: 'bridge1',
         patterns: { little: ['bun-line', 'puff', 'gap', 'puff-buns', 'gap-buns', 'star-stone'], big: ['puff', 'gap', 'puff-buns', 'gap-buns', 'puff-gap', 'double-gap', 'star-stone'] },
@@ -77,9 +77,9 @@ export const ACTIVITIES = {
     },
     beats: { start: S.starStoneStart, end: S.starStoneEnd, resume: S.starStoneResume },
     tune: {
-      all: { legSeconds: 80 },
-      little: { speed: { start: 7.5, max: 10.5 }, breatherEvery: 180 },
-      big: { speed: { start: 10, max: 15 }, breatherEvery: 240 },
+      all: { legSeconds: 50 },
+      little: { speed: { start: 9, max: 12.5 }, breatherEvery: 180 },
+      big: { speed: { start: 12, max: 18 }, breatherEvery: 240 },
     },
     text: { hit: R.hit, goal: R.result },
     // The island after this game (also for Skip and Continue): Poppy is across the old bridge
@@ -180,7 +180,7 @@ export const ACTIVITIES = {
     goal: SP.goal,
     meter: { fullAt: 100 },
     legs: [
-      { teach: { lanes: [-1, 1], timeout: 40 }, theme: 'gold', patterns: ['spark-line'], coach: SP.teach, coachFigure: 'wings', doneBark: SP.teachDone },
+      { teach: { lanes: [-1, 1], timeout: 25 }, theme: 'gold', patterns: ['spark-line'], coach: SP.teach, coachFigure: 'wings', doneBark: SP.teachDone },
       {
         theme: 'gold', setPiece: 'findSignal',
         patterns: { little: ['spark-line', 'spark-weave', 'storm', 'storm-sparks', 'ring', 'storm-ring'], big: ['spark-weave', 'storm', 'storm-sparks', 'storm-ring', 'storm-wall', 'ring-chain'] },
@@ -222,9 +222,9 @@ export const ACTIVITIES = {
     beats: { start: S.skyPilotStart, end: S.skyPowerEnd },
     tune: {
       // steer: lanes per second at full wing tilt.
-      all: { legSeconds: 80 },
-      little: { speed: { start: 7.5, max: 11 }, steer: 1.6, breatherEvery: 180 },
-      big: { speed: { start: 10, max: 16 }, steer: 2.2, breatherEvery: 240 },
+      all: { legSeconds: 40 },
+      little: { speed: { start: 9.5, max: 13.5 }, steer: 2.0, breatherEvery: 180 },
+      big: { speed: { start: 12.5, max: 19 }, steer: 2.7, breatherEvery: 240 },
     },
     text: { hit: P.hit, goal: P.result, collect: 'Sparks', wingsDown: SP.wingsDown },
     // The island after this game (also for Skip and Continue): the dish points at the gate and

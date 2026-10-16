@@ -552,8 +552,12 @@ export function buildWorld(scene) {
   relic.position.set(PLACES.garden[0] - 0.2, -0.05, PLACES.garden[1] + 0.1);
   scene.add(relic);
   relic.userData.glow = 1;
+  relic.userData.tug = 0; // 1 while Poppy tugs at it: it wiggles in the ground
   updaters.push((dt, t) => {
     relicCore.rotation.y += dt * 1.2;
+    const tug = relic.userData.tug * Math.max(0, Math.sin(t * 4.2)); // in time with her heaves
+    relicCore.position.set(Math.sin(t * 31) * 0.03 * tug, tug * 0.05, 0);
+    relicCore.rotation.z = Math.sin(t * 27) * 0.18 * tug;
     relicLight.intensity = (5 + Math.sin(t * 3) * 1.5) * relic.userData.glow;
     relicCore.material.emissiveIntensity = 2.2 * relic.userData.glow;
   });

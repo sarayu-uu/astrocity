@@ -38,8 +38,8 @@ export const HEIGHT_TIME = { camera: { little: 1.0, big: 0.8 }, keyboard: { litt
 export const HEIGHT_HOLD = 0.15;
 // Pilot mode: lanes per second the ship slides at full wing tilt, and the seconds a child needs
 // to cross one lane by tilting (react, tip the arms, slide), by how they play.
-export const STEER_SPEED = { little: 1.6, big: 2.2 };
-export const PILOT_LANE_TIME = { camera: { little: 1.3, big: 0.95 }, keyboard: { little: 0.8, big: 0.6 } };
+export const STEER_SPEED = { little: 2.0, big: 2.7 };
+export const PILOT_LANE_TIME = { camera: { little: 1.15, big: 0.85 }, keyboard: { little: 0.7, big: 0.55 } };
 const SHIP_HALF = 0.32; // the ship's half-width, in lanes
 const GLIDE_HOME = 0.35; // lanes per second back to the middle while the wings are down
 const LEAN_TIME = 0.6; // seconds to see a gust and lean into it

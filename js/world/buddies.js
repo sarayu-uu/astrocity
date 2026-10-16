@@ -280,13 +280,21 @@ export class Buddy {
           mouthOpen = Math.sin(t * 9) > 0;
           squash = Math.sin(t * 9) * 0.02;
           break;
-        case 'pull':
-          tiltX = -0.3 + Math.sin(t * 7) * 0.07;
-          armFwdL = armFwdR = -0.9;
-          armL = armR = 0.1;
-          tiltZ = Math.sin(t * 13) * 0.04;
-          mouthOpen = true;
+        case 'pull': {
+          // Heave-ho on something stuck at her feet: bend down with both hands on it, then throw
+          // her weight back, straining (eyes squeezed, mouth open), and again.
+          const heave = Math.max(0, Math.sin(t * 4.2)); // 0 = reaching down, 1 = leaning back
+          tiltX = 0.42 - heave * 0.85;
+          lift = -0.07 + heave * 0.04;
+          squash = 0.06 - heave * 0.1;
+          armFwdL = armFwdR = -1.35 + heave * 0.25;
+          armL = armR = 0.06;
+          tiltZ = Math.sin(t * 23) * 0.035 * heave;
+          mouthOpen = heave > 0.3;
+          eyesClosed = heave > 0.6;
+          legSwing = heave * 0.06;
           break;
+        }
         case 'cheer':
           bob = Math.abs(Math.sin(t * 8)) * 0.3;
           armL = armR = ARMS.up;

@@ -15,7 +15,7 @@ const load = f => import(pathToFileURL(join(here, '../js/activities', f)).href);
 const { createRunSim, createBot, STEP } = await load('runner-sim.js');
 const { PATTERNS, isObstacle } = await load('runner-patterns.js');
 
-const SPEED = { little: { start: 7.5, max: 10.5 }, big: { start: 10, max: 15 } };
+const SPEED = { little: { start: 9, max: 12.5 }, big: { start: 12, max: 18 } };
 const ADAPT_MAX = 1.25;
 let failed = 0;
 
@@ -57,12 +57,13 @@ for (const age of ['little', 'big']) {
 }
 
 console.log('\nPilot mode (steer with wings), every lane pattern at the fastest speed, steered like a child on camera:');
+const PILOT_SPEED = { little: { start: 9.5, max: 13.5 }, big: { start: 12.5, max: 19 } };
 const PILOT = ['spark-line', 'spark-weave', 'storm', 'storm-sparks', 'ring', 'storm-ring', 'storm-wall', 'zigzag', 'slalom', 'ring-chain', 'puff-buns', 'star-stone'];
 for (const age of ['little', 'big']) {
   for (const name of PILOT) {
-    const fast = FLY_SPEED[age].max * ADAPT_MAX;
+    const fast = PILOT_SPEED[age].max * ADAPT_MAX;
     const { hits, cleared } = play({
-      age, play: 'camera', seed: 3, speed: FLY_SPEED[age], forceSpeed: fast, adaptive: false, mode: 'pilot',
+      age, play: 'camera', seed: 3, speed: PILOT_SPEED[age], forceSpeed: fast, adaptive: false, mode: 'pilot',
       legs: [{ length: fast * 60, patterns: [name] }],
     }, 70);
     const hasObstacles = PATTERNS[name].items.some(i => isObstacle(i.kind));

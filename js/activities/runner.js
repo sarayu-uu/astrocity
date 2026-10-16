@@ -364,7 +364,8 @@ function createView(stage, sim) {
       const take = kind => pools[kind][used[kind]++];
       let nb = 0, ns = 0;
       // Fly mode: how high low and high are (the stage says), for sparks and rings.
-      const heightY = h => (sim.fly ? looks.heights.low + (h ?? 0) * (looks.heights.high - looks.heights.low) : 0.8);
+      // (Pilot mode flies at the low height, so its sparks float right in the ship's path.)
+      const heightY = h => (sim.fly || sim.pilot ? looks.heights.low + (h ?? 0) * (looks.heights.high - looks.heights.low) : 0.8);
       for (const o of sim.objects) {
         const rel = o.D - sim.dist;
         if (rel < -VISIBLE.behind || rel > VISIBLE.ahead) continue;
