@@ -134,6 +134,18 @@ export async function askAround(g) {
     ]);
   };
 
+  // `home` is the view the child had before picking a friend; the camera goes back to it.
+  const lookAtZuzu = async home => {
+    // From the front, the way he faces (the big tree's trunk stays behind him).
+    const fx = 7 - zuzu.x, fz = 15 - zuzu.z;
+    const d = Math.hypot(fx, fz) || 1;
+    await rig.go([zuzu.x + (fx / d) * 6.5, 3.4, zuzu.z + (fz / d) * 6.5], [zuzu.x, 0.7, zuzu.z], 1.6);
+    ui.bark(zuzu, L.again.zuzu, 3.2);
+    await ui.say('poppy', L.zuzuNext, { auto: 3.2 });
+    ui.hideDialogue();
+    await rig.go(home.pos, home.look, 1.4);
+  };
+
   const after = {
     mimi: () => { mimi.state = 'dance'; },
     zuzu: () => { zuzu.state = 'sleep'; },
@@ -154,12 +166,18 @@ export async function askAround(g) {
     busy = true;
     talked.add(b.kind);
     b.badge.visible = false;
+    const home = { pos: rig.pos.toArray(), look: rig.look.toArray(), focus: rig.explore?.focus.toArray() };
     await meet(b);
     if (b === zuzu) zuzu.state = 'sit';
     await talk(g, L[b.kind]);
     after[b.kind]?.();
     ui.hideDialogue();
-    rig.startExplore([b.x, 0, b.z + 1]);
+    // After Mimi, show the child who to ask next: glide over to sleeping Zuzu, then back to
+    // the view they had, so they can find the way to him themselves.
+    if (b === mimi && !talked.has('zuzu') && home.focus) {
+      await lookAtZuzu(home);
+      rig.startExplore(home.focus);
+    } else rig.startExplore([b.x, 0, b.z + 1]);
     busy = false;
     if (b === zuzu) found();
   };

@@ -40,7 +40,7 @@ export const PATTERNS = {
   sunk: { tier: 2, items: [{ kind: 'sunk' }] },
   'puff-gap': { tier: 2, items: [{ kind: 'block', lane: 'random' }, { kind: 'gap', at: 1 }] },
   'double-gap': { tier: 2, items: [{ kind: 'gap' }, { kind: 'gap', at: 1.2 }] },
-  'star-stone': { tier: 2, items: [{ kind: 'wall', lane: 'random' }, { kind: 'star', at: 0.4, lane: 'blocked' }] },
+  'star-stone': { tier: 2, items: [{ kind: 'wall', lane: 'random' }, { kind: 'star', at: 0.6, lane: 'same' }] },
   'wall-jump': { tier: 3, items: [{ kind: 'wall', lane: 'random' }, { kind: 'gap', at: 1 }] },
   'branch-wobble': { tier: 3, items: [{ kind: 'high' }, { kind: 'wobble', at: 1 }] },
   zigzag: { tier: 3, items: [{ kind: 'block', lane: -1 }, { kind: 'block', at: 1, lane: 1 }, { kind: 'block', at: 1, lane: 0 }] },

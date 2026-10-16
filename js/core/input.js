@@ -36,6 +36,8 @@ export const TUNE_DEFAULTS = {
 const CALIBRATE_FULL = 1.5; // seconds, during "Step back so Poppy can see you"
 const CALIBRATE_REGAIN = 0.5; // seconds of steady tracking before re-capturing after a loss
 const AFTER_LANDING = 0.3; // no duck right after a jump lands
+const STAND_BACK = 0.3; // a duck ends when the drop is back under 30% of the trigger...
+const STAND_HOLD = 0.12; // ...for this long (seconds): the child has stood up
 const MIN_JITTER = 0.03; // torso-lengths per second: floor for the measured noise
 
 // The picture is split into three equal parts. A child has to cross a line by ZONE_MARGIN
@@ -75,6 +77,7 @@ export class MotionInput {
     this._sinceDuck = 9; // seconds since the last duck ended
     this._hipBase = null;
     this._duckHeld = 0;
+    this._standHeld = 0;
     this._leanHeld = 0;
     this._zoneSteady = 0;
     this._prev = null;
@@ -394,8 +397,9 @@ export class MotionInput {
     }
     this.wingsTilt += (tiltTarget - this.wingsTilt) * (1 - Math.exp(-dt / 0.1));
 
-    // Duck: the shoulder-hip midpoint drops below the standing baseline. Releases at 60% of
-    // the trigger, so it doesn't flicker. Never while airborne or just after landing.
+    // Duck: the shoulder-hip midpoint drops below the standing baseline. Once down, the duck
+    // stays on until the child really stands up again (back near the baseline for a moment),
+    // so a half-rise or a wobble never lets go. Never while airborne or just after landing.
     const drop = base ? (mid - base.mid) / base.torso : 0;
     this.debug.drop = drop;
     const duckAllowed = base && !this._airborne && this._sinceLanding >= AFTER_LANDING;
@@ -403,10 +407,11 @@ export class MotionInput {
       this.duck = false;
       this._duckHeld = 0;
     } else if (this.duck) {
-      if (drop < T.duckDrop * 0.6) this.duck = false;
+      this._standHeld = drop < T.duckDrop * STAND_BACK ? this._standHeld + dt : 0;
+      if (this._standHeld >= STAND_HOLD) this.duck = false;
     } else {
       this._duckHeld = drop > T.duckDrop ? this._duckHeld + dt : 0;
-      if (this._duckHeld >= T.duckHold) this.duck = true;
+      if (this._duckHeld >= T.duckHold) { this.duck = true; this._standHeld = 0; }
     }
 
     // Lean: the torso axis (hips to shoulders) tilts from vertical while the hips stay in one

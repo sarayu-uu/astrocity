@@ -199,9 +199,29 @@ body:not(.cinematic) #dialogue { bottom: 24px; }
 }
 #dlg-replay:hover { background: rgba(255, 255, 255, 0.2); }
 #dlg-replay svg { width: 20px; height: 20px; fill: #fff; }
-#dialogue { padding-right: 58px; }
-#dlg-next { position: absolute; right: 18px; bottom: 10px; font-size: 14px; color: var(--muted); animation: nudge 1.2s ease-in-out infinite; }
-@keyframes nudge { 50% { transform: translateY(3px); } }
+#dialogue { padding-right: 132px; min-height: 108px; }
+/* Always on screen: one tap skips the rest of the line and moves on. */
+#dlg-next {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+  transition: transform 0.15s, background 0.15s;
+}
+#dlg-next:hover { transform: translateY(-1px); background: #fff; }
+#dlg-next span { display: inline-block; animation: nudge 1.2s ease-in-out infinite; }
+#dlg-next[hidden] { display: none; }
+@keyframes nudge { 50% { transform: translateX(3px); } }
+@media (max-width: 560px) { #dialogue { padding-right: 58px; padding-bottom: 64px; } }
 
 /* ---- Story controls ---------------------------------------------------------- */
 #btn-skip {

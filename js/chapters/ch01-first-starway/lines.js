@@ -43,6 +43,7 @@ export const LINES = {
       zuzu: 'Zzz... potato...',
     },
     hint: 'Zuzu sees everything. He sleeps under the big tree.',
+    zuzuNext: "Look, it's Zuzu! The green one. Let's ask him!",
   },
 
   toBridge: {

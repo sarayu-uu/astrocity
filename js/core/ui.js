@@ -74,6 +74,11 @@ export class UI {
       e.stopPropagation();
       if (this._line) this._speak(...this._line);
     });
+    // The Next button moves on straight away, even mid-line, for kids who read fast.
+    $('#dlg-next').addEventListener('click', e => {
+      e.stopPropagation();
+      this._skip?.();
+    });
     addEventListener('keydown', e => {
       if ((e.code === 'Enter' || e.code === 'Space') && !$('#dialogue').hidden && !$('#dlg-actions').childElementCount) {
         e.preventDefault();
@@ -175,6 +180,7 @@ export class UI {
         this._typing = null;
         this._advance = null;
         this._finish = null;
+        this._skip = null;
         clearTimeout(timer);
         this.onSpeak(who, false);
         resolve(v);
@@ -193,6 +199,7 @@ export class UI {
         timer = setTimeout(() => done(0), auto * 1000);
       }
       this._finish = () => { this.hideDialogue(); done(0); };
+      if (!choices && auto === null) this._skip = () => done(0);
       this._advance = () => {
         if (this._typing) {
           clearInterval(this._typing);
