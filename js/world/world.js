@@ -176,28 +176,79 @@ const waterfallTex = canvasTex(128, 512, (g, w, h) => {
   }
 }, { repeat: [1, 1] });
 
-const fadeDown = canvasTex(4, 256, (g, w, h) => {
-  const grd = g.createLinearGradient(0, 0, 0, h);
-  grd.addColorStop(0, '#fff');
-  grd.addColorStop(0.6, '#aaa');
-  grd.addColorStop(1, '#000');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, w, h);
-}, { srgb: false });
+// A stream and its waterfall as one ribbon of water: it runs across the island top in a soft-
+// edged channel, curls over the rim with a little foam, then pours down, widening and fading into
+// mist. Local frame: +x points out from the island (x = 0 is the rim), y up, z across.
+//   streamLen   how far in from the rim the stream starts
+function waterfall(width, height, streamLen = 4) {
+  // The water's path (outward, up), from the stream's start to the bottom of the fall.
+  const path = new THREE.CatmullRomCurve3([
+    [-streamLen, 0.05], [-streamLen * 0.5, 0.05], [-0.4, 0.05], [0.05, 0.1], [0.4, 0.08],
+    [0.7, -0.3], [0.85, -1.4], [1.0, -5], [1.3, -height * 0.5], [1.7, -height],
+  ].map(([x, y]) => new THREE.Vector3(x, y, 0)), false, 'centripetal');
+  const N = 140;
+  const pts = path.getSpacedPoints(N);
+  const lens = [0];
+  for (let i = 1; i <= N; i++) lens.push(lens[i - 1] + pts[i].distanceTo(pts[i - 1]));
+  const total = lens[N];
+  const lipAt = lens[pts.findIndex(p => p.x >= 0.05)] / total; // where it goes over the rim
+  // Across the ribbon: soft edges (alpha 0 at the very sides).
+  const ACROSS = [[0, 0], [0.12, 0.85], [0.3, 1], [0.7, 1], [0.88, 0.85], [1, 0]];
+  const pos = [], uv = [], col = [], idx = [];
+  const top = new THREE.Color('#5fc4ee'), fall = new THREE.Color('#d6f2ff');
+  const c = new THREE.Color();
+  for (let i = 0; i <= N; i++) {
+    const t = lens[i] / total;
+    const falling = Math.max(0, (t - lipAt) / (1 - lipAt));
+    // Narrower in its channel, wider as it falls; fades at the start, and away at the bottom.
+    const w = width * (t < lipAt ? 0.8 : 0.8 + 0.5 * Math.min(1, falling * 1.6));
+    const fadeIn = Math.min(1, t / 0.04);
+    const fadeOut = 1 - Math.pow(falling, 1.6);
+    c.copy(top).lerp(fall, Math.min(1, falling * 6));
+    for (const [u, a] of ACROSS) {
+      pos.push(pts[i].x, pts[i].y, (u - 0.5) * w);
+      uv.push(u * (width / 2), lens[i] / 3); // the streak texture repeats every 3 units of flow
+      col.push(c.r, c.g, c.b, a * fadeIn * fadeOut);
+    }
+  }
+  const K = ACROSS.length;
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < K - 1; j++) {
+      const a = i * K + j, b = a + K;
+      idx.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+  geo.setIndex(idx);
 
-function waterfall(width, height) {
   const tex = waterfallTex.clone();
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(width / 3, 1);
-  const m = new THREE.MeshBasicMaterial({ color: '#d9f3ff', map: tex, alphaMap: fadeDown, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide });
-  const back = new THREE.MeshBasicMaterial({ color: '#7fc8f0', alphaMap: fadeDown, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
+  tex.needsUpdate = true;
   const g = new THREE.Group();
-  const plane = new THREE.PlaneGeometry(width, height);
-  const a = new THREE.Mesh(plane, back);
-  const b = new THREE.Mesh(plane, m);
-  b.position.z = 0.05;
-  a.position.y = b.position.y = -height / 2;
+  // Two layers: a blue body of water, and moving white streaks on top of it.
+  const body = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+  const streaks = new THREE.MeshBasicMaterial({ color: '#ffffff', map: tex, vertexColors: true, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide });
+  const a = new THREE.Mesh(geo, body);
+  const b = new THREE.Mesh(geo, streaks);
+  b.position.y = 0.004; // just above the water body, so the two never fight
+  a.renderOrder = 1;
+  b.renderOrder = 2;
   g.add(a, b);
+  // A little white foam where it curls over the rim.
+  // (Pale blue, not pure white, so it doesn't glow with the bloom.)
+  const foamMat = new THREE.MeshBasicMaterial({ color: '#cfeeff', transparent: true, opacity: 0.8 });
+  // (Overlapping puffs of different sizes, so it reads as froth, not a row of dots.)
+  const puffs = Math.max(6, Math.round(width * 3));
+  for (let i = 0; i < puffs; i++) {
+    const s = width * (0.045 + ((i * 7) % 5) * 0.01);
+    const foam = new THREE.Mesh(new THREE.SphereGeometry(s, 12, 8), foamMat);
+    foam.scale.set(1.3, 0.45, 1);
+    foam.position.set(0.3 + ((i * 3) % 4) * 0.05, 0.1, (i / (puffs - 1) - 0.5) * width * 0.72);
+    g.add(foam);
+  }
   g.userData.tex = tex;
   return g;
 }
@@ -868,16 +919,13 @@ export function buildWorld(scene) {
     scene.add(g);
     for (let i = 0; i < 3; i++) g.add(alienTree(rr(-o.r * 0.5, o.r * 0.5), rr(-o.r * 0.5, o.r * 0.5), rr(0.8, 1.2), ['#5aae45', '#ff8fb5', '#62b84a'][i], o.seed + i));
     if (withFall) {
-      const f = waterfall(withFall, 70);
-      const a = Math.atan2(-o.z, -o.x); // face roughly toward the centre of the world
-      f.position.set(Math.cos(a) * (o.r + 0.1), -0.1, Math.sin(a) * (o.r + 0.1));
-      f.rotation.y = -a + Math.PI / 2;
+      // A stream runs to the rim and pours over it, on the side facing the middle of the world.
+      const f = waterfall(withFall, 70, o.r * 0.55);
+      const a = Math.atan2(-o.z, -o.x);
+      f.position.set(Math.cos(a) * o.r, 0, Math.sin(a) * o.r);
+      f.rotation.y = -a; // local +x points out over the rim
       g.add(f);
       falls.push(f);
-      const stream = mesh(new THREE.BoxGeometry(withFall, 0.08, o.r * 0.8), new THREE.MeshStandardMaterial({ color: '#4fb6e8', roughness: 0.1 }), { cast: false });
-      stream.position.set(Math.cos(a) * o.r * 0.6, 0.02, Math.sin(a) * o.r * 0.6);
-      stream.rotation.y = -a + Math.PI / 2;
-      g.add(stream);
     }
     return g;
   };
@@ -949,7 +997,7 @@ export function buildWorld(scene) {
   });
 
   updaters.push(dt => {
-    for (const f of falls) f.userData.tex.offset.y += dt * 0.9;
+    for (const f of falls) f.userData.tex.offset.y -= dt * 0.9; // streaks move along the flow
     homeway.material.map.offset.y -= dt * 0.8;
     forestway.material.map.offset.y -= dt * 0.8;
   });
