@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { alienTree } from '../world/alien.js';
+import { bunGeometry, bunMaterial } from '../world/bun.js';
 
 const THEMES = {
   mint: { sky: '#d6f5ec', ground: '#9fe3c6', edge: '#7cc9ab' },
@@ -108,7 +109,7 @@ export default {
           return g;
         },
       },
-      bun: { geometry: new THREE.SphereGeometry(0.28, 18, 12).scale(1.2, 0.8, 1), material: new THREE.MeshStandardMaterial({ color: '#e0a050', roughness: 0.7 }) },
+      bun: { geometry: bunGeometry(0.38), material: bunMaterial() },
       star: { geometry: new THREE.OctahedronGeometry(0.4), material: new THREE.MeshStandardMaterial({ color: '#fff3b0', emissive: '#ffd447', emissiveIntensity: 1.5 }) },
       theme(name) {
         const t = THEMES[name] ?? THEMES.mint;

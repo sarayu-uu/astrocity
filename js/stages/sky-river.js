@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { alienTree } from '../world/alien.js';
+import { bunGeometry, bunMaterial } from '../world/bun.js';
 
 const THEMES = {
   mint: { sky: '#dfece8', river: '#5fd0b6', bank: '#b9cbc4', wall: '#a9bbb7', stone: '#cfd6cf' },
@@ -166,7 +167,7 @@ export default {
           return g;
         },
       },
-      bun: { geometry: new THREE.SphereGeometry(0.3, 18, 12).scale(1.25, 0.8, 1), material: mat('#f0a347', { emissive: '#f0a347', emissiveIntensity: 0.2, roughness: 0.6 }) },
+      bun: { geometry: bunGeometry(0.42), material: bunMaterial() }, // Nutty's buns
       star: { geometry: new THREE.OctahedronGeometry(0.45), material: mat('#ffd447', { emissive: '#ffd447', emissiveIntensity: 1.6, roughness: 0.3 }) },
 
       theme(name) {

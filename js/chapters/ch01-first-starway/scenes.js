@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { sfx } from '../../core/audio.js';
 import { LINES } from './lines.js';
+import { bunGeometry, bunMaterial } from '../../world/bun.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const say = (g, [who, text, opts]) => g.ui.say(who, text, opts);
@@ -23,8 +24,7 @@ export function setup(g) {
   W.relic.userData.tug = 1;
   nutty.place(-5.3, 9.7).faceNow(-7, 9);
   nutty.state = 'eat';
-  props.bun = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), new THREE.MeshStandardMaterial({ color: '#d9893d', roughness: 0.8 }));
-  props.bun.scale.set(1.25, 0.8, 1);
+  props.bun = new THREE.Mesh(bunGeometry(0.17), bunMaterial());
   props.bun.castShadow = true;
   nutty.hold(props.bun);
   lumi.place(16.9, 8.9).faceNow(18.2, 8);
